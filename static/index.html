@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ČIERNE DIERY — MONITOR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ── RESET ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── VARIABLES ── */
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #131315;
+            --bg-card-hover: #1a1a1e;
+            --bg-surface: #101012;
+            --border: #222228;
+            --border-light: #2e2e36;
+            --text: #e8e4df;
+            --text-dim: #8a8694;
+            --text-muted: #4e4c56;
+            --pink: #e8175d;
+            --pink-dim: #e8175d33;
+            --orange: #f58a07;
+            --orange-dim: #f58a0733;
+            --blue: #2d72d2;
+            --blue-dim: #2d72d233;
+            --green: #0fa573;
+            --green-dim: #0fa57333;
+            --yellow: #d4a800;
+            --font-display: 'Saira Extra Condensed', sans-serif;
+            --font-body: 'Barlow', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        /* ── BASE ── */
+        html { font-size: 15px; scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Grain overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.018;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 300px 300px;
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        /* Top accent line */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--pink), var(--orange), var(--yellow), var(--green), var(--blue));
+            z-index: 100;
+        }
+
+        /* ── LOADING ── */
+        #loading {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            z-index: 50;
+            transition: opacity .4s ease, visibility .4s;
+        }
+        #loading.done { opacity: 0; visibility: hidden; }
+        #loading h1 {
+            font-family: var(--font-display);
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            line-height: 0.9;
+            text-transform: uppercase;
+        }
+        #loading p {
+            font-family: var(--font-mono);
+            font-size: .7rem;
+            letter-spacing: .35em;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+
+        /* ── APP ── */
+        #app { opacity: 0; transition: opacity .5s ease .2s; }
+        #app.visible { opacity: 1; }
+        .container { max-width: 1320px; margin: 0 auto; padding: 0 2rem; }
+
+        /* ── HEADER ── */
+        header {
+            padding: 3rem 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-inner {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 2rem;
+            padding-bottom: 1.5rem;
+        }
+        .header-title {
+            display: flex;
+            align-items: baseline;
+            gap: 1.2rem;
+        }
+        .header-title h1 {
+            font-family: var(--font-display);
+            font-size: 3.8rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            line-height: 0.85;
+            text-transform: uppercase;
+        }
+        .header-accent {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            font-weight: 400;
+            letter-spacing: .25em;
+            color: var(--text-muted);
+            padding: .3em .8em;
+            border: 1px solid var(--border);
+        }
+        .header-actions {
+            display: flex;
+            gap: .5rem;
+            align-items: center;
+        }
+        .btn-refresh {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: none;
+            border: 1px solid var(--border);
+            padding: .4em 1em;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .btn-refresh:hover { color: var(--text); border-color: var(--border-light); }
+
+        /* ── STATS BAR ── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1px solid var(--border);
+        }
+        .stat-item {
+            padding: 1.2rem 2rem;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .stat-item:last-child { border-right: none; }
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.02em;
+        }
+        .stat-label {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: .3rem;
+        }
+        .stat-accent { color: var(--pink); }
+
+        /* ── SECTION ── */
+        .section {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 1.8rem;
+        }
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .section-subtitle {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            color: var(--text-muted);
+            letter-spacing: .15em;
+        }
+
+        /* ── CONTROLS ── */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: .55em 1em;
+            width: 260px;
+            outline: none;
+            transition: border-color .15s;
+        }
+        .search-input:focus { border-color: var(--border-light); }
+        .search-input::placeholder { color: var(--text-muted); }
+        .category-filters {
+            display: flex;
+            gap: 2px;
+        }
+        .cat-btn {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: .4em .8em;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .cat-btn:hover { color: var(--text-dim); }
+        .cat-btn.active {
+            color: var(--text);
+            background: var(--bg-card-hover);
+            border-color: var(--border-light);
+        }
+
+        /* ── CATALOG ── */
+        .catalog-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .catalog-toggle {
+            display: flex;
+            gap: 2px;
+        }
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+        }
+        .catalog-card {
+            background: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            transition: background .15s;
+            overflow: hidden;
+        }
+        .catalog-card:hover { background: var(--bg-card-hover); }
+        .catalog-card.has-ads { }
+        .catalog-img-wrap {
+            position: relative;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+            background: var(--bg);
+        }
+        .catalog-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform .3s ease;
+        }
+        .catalog-card:hover .catalog-img-wrap img {
+            transform: scale(1.03);
+        }
+        .catalog-ads-badge {
+            position: absolute;
+            top: .5rem;
+            right: .5rem;
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            font-weight: 500;
+            letter-spacing: .05em;
+            background: var(--pink);
+            color: #fff;
+            padding: .2em .5em;
+            line-height: 1;
+        }
+        .catalog-info {
+            padding: .8rem 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: .25rem;
+        }
+        .catalog-building {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            line-height: 1.15;
+        }
+        .catalog-artist {
+            font-size: .72rem;
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+        .catalog-location {
+            font-family: var(--font-mono);
+            font-size: .58rem;
+            color: var(--text-muted);
+            letter-spacing: .06em;
+        }
+        .catalog-ad-list {
+            margin-top: .4rem;
+            padding-top: .4rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: .25rem;
+        }
+        .catalog-ad {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: .5rem;
+            font-size: .72rem;
+            padding: .15rem 0;
+            color: var(--text-dim);
+            transition: color .15s;
+        }
+        .catalog-ad:hover { color: var(--text); }
+        .catalog-ad-price {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--green);
+            white-space: nowrap;
+        }
+        .catalog-ad-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .catalog-ad-arrow {
+            color: var(--text-muted);
+            font-size: .65rem;
+            flex-shrink: 0;
+        }
+        .catalog-count {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            letter-spacing: .1em;
+        }
+
+        /* ── DETAIL MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            z-index: 80;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 3rem 1rem;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .2s, visibility .2s;
+        }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 720px;
+            position: relative;
+            transform: translateY(16px);
+            transition: transform .25s ease;
+        }
+        .modal-overlay.open .modal { transform: translateY(0); }
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all .15s;
+            z-index: 2;
+        }
+        .modal-close:hover { color: var(--text); border-color: var(--border-light); }
+        .modal-hero {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-img {
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+        }
+        .modal-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .modal-meta {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: .4rem;
+            justify-content: center;
+        }
+        .modal-building {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            line-height: 1.05;
+        }
+        .modal-artist {
+            font-size: .9rem;
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+        .modal-tags {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            margin-top: .3rem;
+        }
+        .modal-tag {
+            font-family: var(--font-mono);
+            font-size: .58rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: .15em .55em;
+        }
+        .modal-archive-link {
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            color: var(--text-muted);
+            margin-top: .4rem;
+            transition: color .15s;
+        }
+        .modal-archive-link:hover { color: var(--pink); }
+
+        .modal-section {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-section:last-child { border-bottom: none; }
+        .modal-section-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-bottom: .8rem;
+        }
+
+        /* Price summary strip */
+        .price-summary {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .price-summary-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .price-summary-value {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .price-summary-value.accent { color: var(--pink); }
+        .price-summary-label {
+            font-family: var(--font-mono);
+            font-size: .55rem;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: .15rem;
+        }
+
+        /* Range chart */
+        .range-chart-wrap {
+            margin-bottom: .5rem;
+        }
+        .range-chart-svg {
+            width: 100%;
+            display: block;
+        }
+        .range-chart-legend {
+            display: flex;
+            gap: 1.2rem;
+            font-family: var(--font-mono);
+            font-size: .58rem;
+            color: var(--text-muted);
+            margin-top: .5rem;
+        }
+        .range-chart-legend span::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 3px;
+            margin-right: .3em;
+            vertical-align: middle;
+        }
+        .legend-range::before { background: var(--pink-dim); height: 8px; }
+        .legend-median::before { background: var(--pink); }
+        .legend-single {
+            font-style: italic;
+            color: var(--text-muted);
+        }
+
+        /* History list */
+        .history-list { display: flex; flex-direction: column; }
+        .history-row {
+            display: grid;
+            grid-template-columns: 65px 1fr 100px 80px 70px;
+            gap: .5rem;
+            align-items: baseline;
+            padding: .4rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: .78rem;
+            transition: background .1s;
+        }
+        .history-row:hover { background: var(--bg-card); }
+        .history-price {
+            font-family: var(--font-mono);
+            font-weight: 500;
+        }
+        .history-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-dim);
+        }
+        .history-title a { transition: color .15s; }
+        .history-title a:hover { color: var(--pink); }
+        .history-location {
+            font-size: .72rem;
+            color: var(--text-muted);
+        }
+        .history-date {
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            color: var(--text-muted);
+        }
+        .history-status {
+            font-family: var(--font-mono);
+            font-size: .58rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            text-align: right;
+        }
+        .status-active { color: var(--green); }
+        .status-inactive { color: var(--text-muted); }
+
+        /* No ads */
+        .no-ads {
+            color: var(--text-muted);
+            font-size: .82rem;
+            padding: .5rem 0;
+        }
+
+        @media (max-width: 600px) {
+            .modal-hero {
+                grid-template-columns: 1fr;
+            }
+            .modal-img {
+                aspect-ratio: 16/9;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .history-row {
+                grid-template-columns: 55px 1fr 60px;
+            }
+            .history-location, .history-status { display: none; }
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        .empty-state h3 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-bottom: .5rem;
+        }
+        .empty-state p {
+            color: var(--text-muted);
+            font-size: .85rem;
+        }
+        .empty-state code {
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            color: var(--text-dim);
+            background: var(--bg-card);
+            padding: .2em .5em;
+            border: 1px solid var(--border);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1100px) {
+            .catalog-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 900px) {
+            .catalog-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 720px) {
+            html { font-size: 14px; }
+            .container { padding: 0 1rem; }
+            .header-inner { flex-direction: column; align-items: flex-start; gap: .5rem; }
+            .header-title h1 { font-size: 2.8rem; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+            .stat-item:nth-child(2) { border-right: none; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .search-input { width: 100%; }
+            .category-filters { flex-wrap: wrap; }
+            .catalog-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+    <h1>ČIERNE DIERY</h1>
+    <p>MONITOR</p>
+</div>
+
+<!-- Main app -->
+<div id="app">
+    <header>
+        <div class="container">
+            <div class="header-inner">
+                <div class="header-title">
+                    <h1>Čierne Diery</h1>
+                    <span class="header-accent">MONITOR</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-refresh" onclick="refreshData()">REFRESH</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats bar -->
+    <div class="stats-bar container" id="stats-bar"></div>
+
+    <!-- DETAIL MODAL -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" id="modal-content">
+            <button class="modal-close" onclick="closeDetail()">&times;</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- CATALOG -->
+    <div class="container">
+        <section class="section" style="border-bottom:none;">
+            <div class="section-header">
+                <h2 class="section-title">Katalóg</h2>
+                <span class="section-subtitle" id="catalog-subtitle"></span>
+            </div>
+            <div class="catalog-controls">
+                <input type="search" class="search-input" id="catalog-search"
+                       placeholder="Hľadať v katalógu...">
+                <div class="catalog-toggle" id="catalog-toggle"></div>
+                <div class="category-filters" id="catalog-cat-filters"></div>
+            </div>
+            <div class="catalog-grid" id="catalog-grid"></div>
+            <div class="catalog-count" id="catalog-count"></div>
+        </section>
+    </div>
+</div>
+
+<script>
+// ── STATE ──
+let allCatalog = [];
+let catalogSearch = '';
+let catalogFilter = 'all';
+let catalogShowAds = 'all';
+
+// ── DATA FETCHING ──
+async function fetchAll() {
+    const [stats, catalog] = await Promise.all([
+        fetch('/api/stats').then(r => r.json()),
+        fetch('/api/catalog').then(r => r.json()),
+    ]);
+    return { stats, catalog };
+}
+
+async function refreshData() {
+    try {
+        const data = await fetchAll();
+        allCatalog = data.catalog;
+        renderStats(data.stats);
+        renderCatalog();
+    } catch (e) {
+        console.error('Fetch error:', e);
+    }
+}
+
+// ── RENDER: STATS ──
+function renderStats(s) {
+    const bar = document.getElementById('stats-bar');
+    bar.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-value" data-target="${s.active_listings}">0</span>
+            <span class="stat-label">Aktívnych inzerátov</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" data-target="${s.catalog_count}">0</span>
+            <span class="stat-label">V katalógu</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" data-target="${Math.round(s.avg_price || 0)}" data-suffix="€">0€</span>
+            <span class="stat-label">Priemerná cena</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value stat-accent" data-target="${s.great_deals}">0</span>
+            <span class="stat-label">Výhodných ponúk</span>
+        </div>
+    `;
+    // Animate counters
+    bar.querySelectorAll('.stat-value').forEach(el => {
+        animateNumber(el, parseInt(el.dataset.target), el.dataset.suffix || '');
+    });
+}
+
+function animateNumber(el, target, suffix) {
+    const start = performance.now();
+    const dur = 800;
+    function tick(now) {
+        const t = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(target * ease) + suffix;
+        if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+}
+
+// ── RENDER: CATALOG ──
+function renderCatalog() {
+    const grid = document.getElementById('catalog-grid');
+    const subtitle = document.getElementById('catalog-subtitle');
+    const countEl = document.getElementById('catalog-count');
+
+    // Build toggle buttons
+    const toggleEl = document.getElementById('catalog-toggle');
+    const withAds = allCatalog.filter(c => c.active_count > 0).length;
+    toggleEl.innerHTML = `
+        <button class="cat-btn ${catalogShowAds === 'all' ? 'active' : ''}"
+            onclick="setCatalogAds('all')">Všetky</button>
+        <button class="cat-btn ${catalogShowAds === 'with-ads' ? 'active' : ''}"
+            onclick="setCatalogAds('with-ads')">S inzerátmi (${withAds})</button>`;
+
+    // Build category filters
+    const cats = {};
+    allCatalog.forEach(c => {
+        const cat = c.category || 'Ostatné';
+        cats[cat] = (cats[cat] || 0) + 1;
+    });
+    const catEl = document.getElementById('catalog-cat-filters');
+    catEl.innerHTML = `<button class="cat-btn ${catalogFilter === 'all' ? 'active' : ''}"
+        onclick="setCatalogFilter('all')">Všetky</button>` +
+        Object.entries(cats)
+            .sort((a, b) => b[1] - a[1])
+            .map(([cat, n]) => `<button class="cat-btn ${catalogFilter === cat ? 'active' : ''}"
+                onclick="setCatalogFilter('${esc(cat)}')">${esc(cat)} ${n}</button>`)
+            .join('');
+
+    updateCatalogGrid();
+}
+
+function updateCatalogGrid() {
+    const grid = document.getElementById('catalog-grid');
+    const countEl = document.getElementById('catalog-count');
+    const subtitle = document.getElementById('catalog-subtitle');
+
+    let filtered = allCatalog;
+
+    if (catalogShowAds === 'with-ads') {
+        filtered = filtered.filter(c => c.active_count > 0);
+    }
+    if (catalogFilter !== 'all') {
+        filtered = filtered.filter(c => (c.category || 'Ostatné') === catalogFilter);
+    }
+    if (catalogSearch) {
+        const q = catalogSearch.toLowerCase();
+        filtered = filtered.filter(c =>
+            (c.title || '').toLowerCase().includes(q) ||
+            (c.building || '').toLowerCase().includes(q) ||
+            (c.artist || '').toLowerCase().includes(q) ||
+            (c.location || '').toLowerCase().includes(q)
+        );
+    }
+
+    // Sort: items with ads first, then alphabetically
+    filtered.sort((a, b) => {
+        if (a.active_count > 0 && b.active_count === 0) return -1;
+        if (a.active_count === 0 && b.active_count > 0) return 1;
+        return (a.building || a.title || '').localeCompare(b.building || b.title || '');
+    });
+
+    subtitle.textContent = `${allCatalog.length} DIEL V ARCHÍVE`;
+    countEl.textContent = `Zobrazených: ${filtered.length}`;
+
+    if (filtered.length === 0) {
+        grid.style.background = 'none';
+        grid.style.border = 'none';
+        grid.innerHTML = `<div class="empty-state"><h3>Žiadne výsledky</h3></div>`;
+        return;
+    }
+
+    grid.style.background = '';
+    grid.style.border = '';
+    grid.innerHTML = filtered.map(catalogCard).join('');
+}
+
+function catalogCard(c) {
+    const building = c.building || c.title || '';
+    const hasAds = c.active_count > 0;
+    const adsHtml = hasAds ? `
+        <div class="catalog-ad-list">
+            ${c.ads.slice(0, 3).map(a => `
+                <a href="${esc(a.url)}" target="_blank" rel="noopener" class="catalog-ad"
+                   onclick="event.stopPropagation()">
+                    <span class="catalog-ad-price">${a.price ? a.price.toFixed(0) + '€' : 'Dohodou'}</span>
+                    <span class="catalog-ad-title">${esc(a.title)}</span>
+                    <span class="catalog-ad-arrow">\u2192</span>
+                </a>`).join('')}
+            ${c.ads.length > 3 ? `<span style="font-size:.65rem;color:var(--text-muted);">+ ${c.ads.length - 3} ďalších</span>` : ''}
+        </div>` : '';
+
+    return `
+    <div class="catalog-card ${hasAds ? 'has-ads' : ''}"
+         onclick="openDetail(${c.id})" style="cursor:pointer">
+        <div class="catalog-img-wrap">
+            ${c.image_url ? `<img src="${esc(c.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
+            ${hasAds ? `<span class="catalog-ads-badge">${c.active_count} inzerát${c.active_count > 1 ? 'y' : ''}</span>` : ''}
+        </div>
+        <div class="catalog-info">
+            <div class="catalog-building">${esc(building)}</div>
+            ${c.artist ? `<div class="catalog-artist">${esc(c.artist)}</div>` : ''}
+            <div class="catalog-location">${esc(c.location || '')} ${c.category ? `\u00b7 ${esc(c.category)}` : ''}</div>
+            ${adsHtml}
+        </div>
+    </div>`;
+}
+
+function setCatalogAds(mode) {
+    catalogShowAds = mode;
+    renderCatalog();
+}
+
+function setCatalogFilter(cat) {
+    catalogFilter = cat;
+    renderCatalog();
+}
+
+// ── DETAIL MODAL ──
+async function openDetail(catalogId) {
+    const overlay = document.getElementById('modal-overlay');
+    const body = document.getElementById('modal-body');
+    body.innerHTML = `<div style="padding:3rem;text-align:center;">
+        <p style="font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);
+           letter-spacing:.3em;animation:pulse 1.5s infinite;">LOADING</p></div>`;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        const d = await fetch(`/api/catalog-detail?id=${catalogId}`).then(r => r.json());
+        body.innerHTML = renderDetail(d);
+    } catch (e) {
+        body.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--pink);">Chyba pri načítaní</div>`;
+    }
+}
+
+function closeDetail() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function closeModal(e) {
+    if (e.target === e.currentTarget) closeDetail();
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDetail();
+});
+
+function renderDetail(d) {
+    const building = d.building || d.title || '';
+    const activeAds = d.all_listings.filter(l => l.is_active);
+    const ps = d.price_stats;
+
+    let priceSection = '';
+    if (ps && ps.count > 0) {
+        const chartHtml = d.snapshots && d.snapshots.length > 0
+            ? renderRangeChart(d.snapshots) : '';
+
+        priceSection = `
+        <div class="modal-section">
+            <div class="modal-section-title">Cenová história</div>
+            <div class="price-summary">
+                <div class="price-summary-item">
+                    <span class="price-summary-value accent">${ps.median.toFixed(0)}€</span>
+                    <span class="price-summary-label">Medián</span>
+                </div>
+                <div class="price-summary-item">
+                    <span class="price-summary-value">${ps.min.toFixed(0)}€</span>
+                    <span class="price-summary-label">Minimum</span>
+                </div>
+                <div class="price-summary-item">
+                    <span class="price-summary-value">${ps.max.toFixed(0)}€</span>
+                    <span class="price-summary-label">Maximum</span>
+                </div>
+                <div class="price-summary-item">
+                    <span class="price-summary-value">${ps.avg.toFixed(0)}€</span>
+                    <span class="price-summary-label">Priemer</span>
+                </div>
+                <div class="price-summary-item">
+                    <span class="price-summary-value">${ps.count}</span>
+                    <span class="price-summary-label">Inzerátov</span>
+                </div>
+            </div>
+            ${chartHtml}
+        </div>`;
+    }
+
+    const historyRows = d.all_listings.length > 0 ? `
+        <div class="modal-section">
+            <div class="modal-section-title">Všetky inzeráty (${d.all_listings.length})</div>
+            <div class="history-list">
+                ${d.all_listings.map(l => `
+                    <div class="history-row">
+                        <div class="history-price">${l.price ? l.price.toFixed(0) + '€' : '—'}</div>
+                        <div class="history-title">
+                            <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a>
+                        </div>
+                        <div class="history-location">${esc(l.location || '')}</div>
+                        <div class="history-date">${esc(l.date_posted || '')}</div>
+                        <div class="history-status ${l.is_active ? 'status-active' : 'status-inactive'}">
+                            ${l.is_active ? 'Aktívny' : 'Neaktívny'}
+                        </div>
+                    </div>`).join('')}
+            </div>
+        </div>` : `
+        <div class="modal-section">
+            <div class="modal-section-title">Inzeráty</div>
+            <div class="no-ads">Zatiaľ žiadne zaznamenané inzeráty pre túto položku.</div>
+        </div>`;
+
+    return `
+        <div class="modal-hero">
+            <div class="modal-img">
+                ${d.image_url ? `<img src="${esc(d.image_url)}" alt="${esc(building)}">` : ''}
+            </div>
+            <div class="modal-meta">
+                <div class="modal-building">${esc(building)}</div>
+                ${d.artist ? `<div class="modal-artist">${esc(d.artist)}</div>` : ''}
+                <div class="modal-tags">
+                    ${d.location ? `<span class="modal-tag">${esc(d.location)}</span>` : ''}
+                    ${d.category ? `<span class="modal-tag">${esc(d.category)}</span>` : ''}
+                    ${activeAds.length > 0 ? `<span class="modal-tag" style="border-color:var(--green);color:var(--green);">${activeAds.length} aktívn${activeAds.length > 1 ? 'e' : 'y'}</span>` : ''}
+                </div>
+                ${d.archive_url && d.archive_url !== '#' ? `<a href="${esc(d.archive_url)}" target="_blank" rel="noopener" class="modal-archive-link">Zobraziť v archíve \u2192</a>` : ''}
+            </div>
+        </div>
+        ${priceSection}
+        ${historyRows}`;
+}
+
+// ── RANGE CHART ──
+function renderRangeChart(snapshots) {
+    if (!snapshots || snapshots.length === 0) return '';
+
+    const W = 640, H = 160;
+    const pad = { top: 15, right: 15, bottom: 28, left: 45 };
+    const cw = W - pad.left - pad.right;
+    const ch = H - pad.top - pad.bottom;
+
+    // Parse dates and find ranges
+    const data = snapshots.map(s => ({
+        date: new Date(s.scraped_at),
+        min: s.min_price,
+        max: s.max_price,
+        med: s.median_price,
+        n: s.listing_count,
+    }));
+
+    const allPrices = data.flatMap(d => [d.min, d.max]);
+    const pMin = Math.min(...allPrices);
+    const pMax = Math.max(...allPrices);
+    const pRange = pMax - pMin || 1;
+    const pPad = pRange * 0.1;
+
+    const dateMin = data[0].date.getTime();
+    const dateMax = data[data.length - 1].date.getTime();
+    const dateRange = dateMax - dateMin || 1;
+
+    const x = (date) => pad.left + ((date.getTime() - dateMin) / dateRange) * cw;
+    const y = (price) => pad.top + ch - ((price - pMin + pPad) / (pRange + pPad * 2)) * ch;
+
+    // Single data point: show as vertical range bar centered
+    if (data.length === 1) {
+        const d = data[0];
+        const cx = W / 2;
+        const yTop = y(d.max);
+        const yBot = y(d.min);
+        const yMed = y(d.med);
+        const dateStr = formatDateShort(d.date);
+
+        return `<div class="range-chart-wrap">
+            <svg class="range-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+                <rect x="${cx - 12}" y="${yTop}" width="24" height="${yBot - yTop || 2}"
+                      fill="var(--pink-dim)" rx="1"/>
+                <line x1="${cx - 8}" y1="${yMed}" x2="${cx + 8}" y2="${yMed}"
+                      stroke="var(--pink)" stroke-width="2"/>
+                ${d.min !== d.max ? `
+                    <text x="${cx}" y="${yTop - 5}" text-anchor="middle"
+                          fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)">${d.max.toFixed(0)}€</text>
+                    <text x="${cx}" y="${yBot + 13}" text-anchor="middle"
+                          fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)">${d.min.toFixed(0)}€</text>
+                ` : `
+                    <text x="${cx}" y="${yMed - 8}" text-anchor="middle"
+                          fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)">${d.med.toFixed(0)}€</text>
+                `}
+                <text x="${cx}" y="${H - 4}" text-anchor="middle"
+                      fill="var(--text-muted)" font-size="10" font-family="var(--font-mono)">${dateStr}</text>
+            </svg>
+            <div class="range-chart-legend">
+                <span class="legend-single">Jeden záznam — graf sa naplní ďalšími scrapmi</span>
+            </div>
+        </div>`;
+    }
+
+    // Build band path (filled area between min and max)
+    const topLine = data.map(d => `${x(d.date).toFixed(1)},${y(d.max).toFixed(1)}`).join(' L');
+    const botLine = data.slice().reverse().map(d => `${x(d.date).toFixed(1)},${y(d.min).toFixed(1)}`).join(' L');
+    const bandPath = `M${topLine} L${botLine} Z`;
+
+    // Median line
+    const medLine = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${x(d.date).toFixed(1)},${y(d.med).toFixed(1)}`).join(' ');
+
+    // Y-axis labels (3-5 ticks)
+    const yTicks = niceScale(pMin - pPad, pMax + pPad, 4);
+    const yLabels = yTicks.map(v =>
+        `<line x1="${pad.left}" y1="${y(v).toFixed(1)}" x2="${W - pad.right}" y2="${y(v).toFixed(1)}"
+               stroke="var(--border)" stroke-width="0.5"/>
+         <text x="${pad.left - 6}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end"
+               fill="var(--text-muted)" font-size="9" font-family="var(--font-mono)">${v.toFixed(0)}€</text>`
+    ).join('');
+
+    // X-axis labels
+    const xLabelCount = Math.min(data.length, 6);
+    const xStep = Math.max(1, Math.floor(data.length / xLabelCount));
+    const xLabels = data
+        .filter((_, i) => i % xStep === 0 || i === data.length - 1)
+        .map(d => `<text x="${x(d.date).toFixed(1)}" y="${H - 4}" text-anchor="middle"
+               fill="var(--text-muted)" font-size="9" font-family="var(--font-mono)">${formatDateShort(d.date)}</text>`)
+        .join('');
+
+    // Data point dots (on median line)
+    const dots = data.map(d =>
+        `<circle cx="${x(d.date).toFixed(1)}" cy="${y(d.med).toFixed(1)}" r="2.5"
+                 fill="var(--pink)" stroke="var(--bg-surface)" stroke-width="1">
+            <title>${formatDateShort(d.date)}: ${d.min.toFixed(0)}–${d.max.toFixed(0)}€ (med ${d.med.toFixed(0)}€, n=${d.n})</title>
+         </circle>`
+    ).join('');
+
+    return `<div class="range-chart-wrap">
+        <svg class="range-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+            ${yLabels}
+            <path d="${bandPath}" fill="var(--pink-dim)" opacity="0.5"/>
+            <path d="${medLine}" fill="none" stroke="var(--pink)" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            ${dots}
+            ${xLabels}
+        </svg>
+        <div class="range-chart-legend">
+            <span class="legend-range">Min–Max rozsah</span>
+            <span class="legend-median">Medián</span>
+        </div>
+    </div>`;
+}
+
+function formatDateShort(d) {
+    return `${d.getDate()}.${d.getMonth() + 1}.`;
+}
+
+function niceScale(min, max, ticks) {
+    const range = max - min || 1;
+    const step = range / ticks;
+    const mag = Math.pow(10, Math.floor(Math.log10(step)));
+    const nice = [1, 2, 5, 10].map(m => m * mag).find(m => m >= step) || step;
+    const start = Math.ceil(min / nice) * nice;
+    const result = [];
+    for (let v = start; v <= max; v += nice) {
+        result.push(v);
+    }
+    return result;
+}
+
+// ── UTILS ──
+function esc(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// ── EVENT HANDLERS ──
+document.getElementById('catalog-search').addEventListener('input', e => {
+    catalogSearch = e.target.value;
+    updateCatalogGrid();
+});
+
+// ── INIT ──
+(async function init() {
+    try {
+        const data = await fetchAll();
+        allCatalog = data.catalog;
+
+        renderStats(data.stats);
+        renderCatalog();
+
+        document.getElementById('loading').classList.add('done');
+        document.getElementById('app').classList.add('visible');
+    } catch (e) {
+        document.getElementById('loading').innerHTML = `
+            <h1>ČIERNE DIERY</h1>
+            <p style="animation:none;color:var(--pink);margin-top:1rem;">CHYBA PRIPOJENIA</p>
+            <p style="animation:none;margin-top:.5rem;">
+                Spusti najprv <code style="font-family:var(--font-mono);
+                background:var(--bg-card);padding:.2em .5em;border:1px solid var(--border);">
+                python main.py scrape</code>
+            </p>`;
+        console.error(e);
+    }
+})();
+</script>
+</body>
+</html>
