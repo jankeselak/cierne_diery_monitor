@@ -69,6 +69,38 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_snapshots_catalog ON price_snapshots(catalog_id);
         CREATE INDEX IF NOT EXISTS idx_snapshots_date ON price_snapshots(scraped_at);
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            token TEXT UNIQUE,
+            token_expires_at TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS watchlist (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            catalog_id INTEGER NOT NULL,
+            max_price REAL,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (catalog_id) REFERENCES catalog(id),
+            UNIQUE(user_id, catalog_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS notifications_sent (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            bazos_id TEXT NOT NULL,
+            sent_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, bazos_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id);
+        CREATE INDEX IF NOT EXISTS idx_watchlist_catalog ON watchlist(catalog_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications_sent(user_id);
     """)
     # Migrate: add image_url column if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(catalog)").fetchall()]

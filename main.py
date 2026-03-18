@@ -13,6 +13,7 @@ import db
 import scraper
 import matcher
 import analyzer
+import notifier
 
 
 def log(msg):
@@ -42,6 +43,7 @@ def cmd_scrape():
     # 4. Store listings
     active_ids = set()
     new_count = 0
+    new_listings = []
     for listing in listings:
         existing = conn.execute(
             "SELECT id FROM listings WHERE bazos_id = ?",
@@ -49,6 +51,7 @@ def cmd_scrape():
         ).fetchone()
         if not existing:
             new_count += 1
+            new_listings.append(listing)
         db.upsert_listing(conn, listing)
         active_ids.add(listing["bazos_id"])
 
@@ -59,6 +62,9 @@ def cmd_scrape():
     # 5. Record price snapshots
     db.record_snapshots(conn)
     conn.commit()
+
+    # 6. Send watchdog notifications for new listings
+    notifier.send_watchdog_alerts(conn, new_listings)
 
     matched = sum(1 for l in listings if l["catalog_id"])
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
