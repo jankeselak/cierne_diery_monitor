@@ -265,13 +265,47 @@ def record_snapshots(conn):
 
 
 def get_snapshots(conn, catalog_id):
-    """Get all price snapshots for a catalog item, ordered by date."""
-    return conn.execute("""
-        SELECT scraped_at, min_price, max_price, avg_price,
-               median_price, listing_count
+    """Get aggregated price snapshots for a catalog item.
+
+    Adaptive granularity: daily (<14d), weekly (14-90d), monthly (>90d).
+    """
+    # Determine date range
+    bounds = conn.execute("""
+        SELECT MIN(scraped_at) as first, MAX(scraped_at) as last
+        FROM price_snapshots WHERE catalog_id = ?
+    """, (catalog_id,)).fetchone()
+
+    if not bounds or not bounds["first"]:
+        return []
+
+    from datetime import datetime
+    first = datetime.strptime(bounds["first"][:10], "%Y-%m-%d")
+    last = datetime.strptime(bounds["last"][:10], "%Y-%m-%d")
+    span_days = (last - first).days
+
+    # Choose grouping
+    if span_days < 14:
+        # Daily: group by date
+        group_expr = "DATE(scraped_at)"
+    elif span_days < 90:
+        # Weekly: group by year + week number
+        group_expr = "strftime('%Y-%W', scraped_at)"
+    else:
+        # Monthly: group by year-month
+        group_expr = "strftime('%Y-%m', scraped_at)"
+
+    return conn.execute(f"""
+        SELECT {group_expr} as period,
+               MIN(scraped_at) as scraped_at,
+               MIN(min_price) as min_price,
+               MAX(max_price) as max_price,
+               AVG(avg_price) as avg_price,
+               AVG(median_price) as median_price,
+               MAX(listing_count) as listing_count
         FROM price_snapshots
         WHERE catalog_id = ?
-        ORDER BY scraped_at ASC
+        GROUP BY {group_expr}
+        ORDER BY period ASC
     """, (catalog_id,)).fetchall()
 
 
