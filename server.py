@@ -67,6 +67,7 @@ class Handler(SimpleHTTPRequestHandler):
             ("GET", "/api/price-stats"): self._api_price_stats,
             ("GET", "/api/catalog"): self._api_catalog,
             ("GET", "/api/catalog-detail"): self._api_catalog_detail,
+            ("GET", "/api/recent"): self._api_recent,
             ("POST", "/api/auth/login"): self._api_auth_login,
             ("GET", "/api/auth/verify"): self._api_auth_verify,
             ("GET", "/api/auth/me"): self._api_auth_me,
@@ -192,6 +193,25 @@ class Handler(SimpleHTTPRequestHandler):
             result.append({**dict(row), "median_price": med})
         conn.close()
         return result
+
+    def _api_recent(self):
+        params = self._get_params()
+        limit = int(params.get("limit", [30])[0])
+        limit = min(limit, 100)
+        conn = db.get_connection()
+        rows = conn.execute("""
+            SELECT l.bazos_id, l.title, l.price, l.price_text, l.location,
+                   l.url, l.image_url, l.first_seen, l.date_posted, l.views,
+                   l.catalog_id, l.is_active,
+                   c.title as catalog_title, c.building, c.artist,
+                   c.image_url as catalog_image, c.category
+            FROM listings l
+            LEFT JOIN catalog c ON l.catalog_id = c.id
+            ORDER BY l.first_seen DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
     # ── AUTH ──
 

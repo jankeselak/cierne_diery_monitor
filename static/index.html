@@ -631,44 +631,15 @@
             .history-location, .history-status { display: none; }
         }
 
-        /* ── AUTH BAR ── */
+        /* ── AUTH BAR (header, minimal) ── */
         .auth-bar {
             display: flex;
             align-items: center;
             gap: .8rem;
             font-family: var(--font-mono);
-            font-size: .7rem;
-        }
-        .auth-bar input[type="email"] {
-            font-family: var(--font-mono);
-            font-size: .7rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: .4em .8em;
-            width: 200px;
-            outline: none;
-        }
-        .auth-bar input[type="email"]:focus { border-color: var(--border-light); }
-        .auth-bar input[type="email"]::placeholder { color: var(--text-muted); }
-        .auth-bar .auth-btn {
-            font-family: var(--font-mono);
-            font-size: .6rem;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            background: var(--pink);
-            color: #fff;
-            border: none;
-            padding: .5em 1em;
-            cursor: pointer;
-            transition: opacity .15s;
-        }
-        .auth-bar .auth-btn:hover { opacity: .85; }
-        .auth-bar .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
-        .auth-bar .auth-status {
-            color: var(--text-dim);
             font-size: .65rem;
         }
+        .auth-bar .auth-status { color: var(--text-dim); }
         .auth-bar .auth-logout {
             color: var(--text-muted);
             cursor: pointer;
@@ -681,84 +652,281 @@
             text-transform: uppercase;
         }
         .auth-bar .auth-logout:hover { color: var(--pink); }
-        .auth-message {
-            font-family: var(--font-mono);
-            font-size: .65rem;
-            color: var(--green);
-            margin-top: .3rem;
-        }
-        .auth-message.error { color: var(--pink); }
 
-        /* ── WATCH BUTTON ── */
-        .watch-btn {
-            position: absolute;
-            top: .5rem;
-            left: .5rem;
-            background: rgba(10, 10, 10, .7);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            width: 2rem;
-            height: 2rem;
+        /* ── NOTIFICATION CTA (in modal) ── */
+        .notify-section {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+        .notify-cta {
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all .15s;
-            z-index: 2;
+            gap: 1rem;
+        }
+        .notify-cta-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
             line-height: 1;
         }
-        .watch-btn:hover { color: var(--pink); border-color: var(--pink); }
-        .watch-btn.watching {
-            color: var(--pink);
-            border-color: var(--pink);
-            background: rgba(232, 23, 93, .15);
+        .notify-cta-text {
+            flex: 1;
         }
+        .notify-cta-title {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+        .notify-cta-sub {
+            font-size: .72rem;
+            color: var(--text-dim);
+            margin-top: .15rem;
+        }
+        .notify-btn {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            background: var(--pink);
+            color: #fff;
+            border: none;
+            padding: .6em 1.2em;
+            cursor: pointer;
+            transition: opacity .15s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .notify-btn:hover { opacity: .85; }
+        .notify-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .notify-btn.active {
+            background: none;
+            border: 1px solid var(--green);
+            color: var(--green);
+        }
+        .notify-btn.active:hover { opacity: .7; }
 
-        /* Watch button in modal */
-        .modal-watch-row {
+        /* Inline email form (shown when not logged in) */
+        .notify-email-form {
+            display: flex;
+            gap: .5rem;
+            align-items: center;
+            margin-top: .8rem;
+            flex-wrap: wrap;
+        }
+        .notify-email-input {
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: .5em .8em;
+            width: 220px;
+            outline: none;
+        }
+        .notify-email-input:focus { border-color: var(--pink); }
+        .notify-email-input::placeholder { color: var(--text-muted); }
+        .notify-send-btn {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            background: var(--pink);
+            color: #fff;
+            border: none;
+            padding: .55em 1em;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+        .notify-send-btn:hover { opacity: .85; }
+        .notify-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .notify-msg {
+            font-family: var(--font-mono);
+            font-size: .62rem;
+            width: 100%;
+            margin-top: .3rem;
+        }
+        .notify-msg.ok { color: var(--green); }
+        .notify-msg.error { color: var(--pink); }
+
+        /* Price filter row */
+        .notify-options {
             display: flex;
             align-items: center;
             gap: .8rem;
             margin-top: .6rem;
-            padding-top: .6rem;
-            border-top: 1px solid var(--border);
         }
-        .modal-watch-btn {
-            font-family: var(--font-mono);
-            font-size: .65rem;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            padding: .45em 1em;
-            cursor: pointer;
-            transition: all .15s;
-            border: 1px solid var(--border);
-            background: var(--bg-card);
-            color: var(--text-dim);
-        }
-        .modal-watch-btn:hover { border-color: var(--pink); color: var(--pink); }
-        .modal-watch-btn.watching {
-            background: var(--pink);
-            border-color: var(--pink);
-            color: #fff;
-        }
-        .modal-price-input {
+        .notify-price-input {
             font-family: var(--font-mono);
             font-size: .7rem;
-            background: var(--bg-card);
+            background: var(--bg-surface);
             border: 1px solid var(--border);
             color: var(--text);
             padding: .35em .6em;
             width: 80px;
             outline: none;
         }
-        .modal-price-input:focus { border-color: var(--border-light); }
-        .modal-price-input::placeholder { color: var(--text-muted); }
-        .modal-price-label {
+        .notify-price-input:focus { border-color: var(--border-light); }
+        .notify-price-input::placeholder { color: var(--text-muted); }
+        .notify-price-label {
             font-family: var(--font-mono);
             font-size: .6rem;
             color: var(--text-muted);
             letter-spacing: .06em;
+        }
+
+        /* ── RECENT FEED ── */
+        .recent-feed {
+            display: flex;
+            flex-direction: column;
+        }
+        .recent-item {
+            display: grid;
+            grid-template-columns: 56px 1fr auto;
+            gap: 0 .8rem;
+            padding: .7rem 0;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            transition: background .1s;
+        }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-item:hover { background: var(--bg-card); }
+        .recent-thumb {
+            width: 56px;
+            height: 42px;
+            overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            grid-row: span 2;
+        }
+        .recent-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .recent-thumb-empty {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .6rem;
+            color: var(--text-muted);
+        }
+        .recent-main {
+            display: flex;
+            align-items: baseline;
+            gap: .5rem;
+            min-width: 0;
+        }
+        .recent-title {
+            font-size: .8rem;
+            font-weight: 400;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+        .recent-title a {
+            color: var(--text);
+            text-decoration: none;
+            transition: color .15s;
+        }
+        .recent-title a:hover { color: var(--pink); }
+        .recent-catalog {
+            font-family: var(--font-display);
+            font-size: .8rem;
+            font-weight: 600;
+            letter-spacing: .02em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: color .15s;
+            white-space: nowrap;
+        }
+        .recent-catalog:hover { color: var(--pink); }
+        .recent-price {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: .8rem;
+            color: var(--green);
+            white-space: nowrap;
+        }
+        .recent-meta {
+            grid-column: 2;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            font-size: .68rem;
+            color: var(--text-muted);
+        }
+        .recent-tag {
+            font-family: var(--font-mono);
+            font-size: .55rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: .15em .45em;
+            border: 1px solid;
+            line-height: 1;
+        }
+        .recent-tag.matched {
+            color: var(--green);
+            border-color: var(--green-dim);
+        }
+        .recent-tag.unmatched {
+            color: var(--text-muted);
+            border-color: var(--border);
+        }
+        .recent-time {
+            font-family: var(--font-mono);
+            font-size: .62rem;
+            letter-spacing: .04em;
+        }
+        .recent-right {
+            text-align: right;
+            grid-row: span 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: .2rem;
+        }
+        .recent-link {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color .15s;
+            letter-spacing: .04em;
+        }
+        .recent-link:hover { color: var(--pink); }
+        .recent-show-more {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: none;
+            border: 1px solid var(--border);
+            padding: .5em 1.5em;
+            cursor: pointer;
+            transition: all .15s;
+            margin-top: 1rem;
+            align-self: center;
+        }
+        .recent-show-more:hover {
+            color: var(--text);
+            border-color: var(--border-light);
+        }
+        @media (max-width: 720px) {
+            .recent-item {
+                grid-template-columns: 48px 1fr auto;
+            }
+            .recent-thumb { width: 48px; height: 36px; }
+            .recent-catalog { display: none; }
         }
 
         /* ── EMPTY STATE ── */
@@ -844,6 +1012,17 @@
         </div>
     </div>
 
+    <!-- RECENT LISTINGS -->
+    <div class="container">
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">Najnovšie inzeráty</h2>
+                <span class="section-subtitle" id="recent-subtitle"></span>
+            </div>
+            <div class="recent-feed" id="recent-feed"></div>
+        </section>
+    </div>
+
     <!-- CATALOG -->
     <div class="container">
         <section class="section" style="border-bottom:none;">
@@ -871,21 +1050,26 @@ let catalogFilter = 'all';
 let catalogShowAds = 'all';
 let currentUser = null; // { email, token }
 let watchedIds = new Set(); // catalog_ids being watched
+let recentListings = [];
+let recentLimit = 20;
 
 // ── DATA FETCHING ──
 async function fetchAll() {
-    const [stats, catalog] = await Promise.all([
+    const [stats, catalog, recent] = await Promise.all([
         fetch('/api/stats').then(r => r.json()),
         fetch('/api/catalog').then(r => r.json()),
+        fetch(`/api/recent?limit=${recentLimit + 10}`).then(r => r.json()),
     ]);
-    return { stats, catalog };
+    return { stats, catalog, recent };
 }
 
 async function refreshData() {
     try {
         const data = await fetchAll();
         allCatalog = data.catalog;
+        recentListings = data.recent;
         renderStats(data.stats);
+        renderRecent();
         renderCatalog();
     } catch (e) {
         console.error('Fetch error:', e);
@@ -929,6 +1113,84 @@ function animateNumber(el, target, suffix) {
         if (t < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+}
+
+// ── RENDER: RECENT ──
+function renderRecent() {
+    const feed = document.getElementById('recent-feed');
+    const subtitle = document.getElementById('recent-subtitle');
+
+    const shown = recentListings.slice(0, recentLimit);
+    const hasMore = recentListings.length > recentLimit;
+
+    subtitle.textContent = `POSLEDNÝCH ${shown.length} INZERÁTOV`;
+
+    if (shown.length === 0) {
+        feed.innerHTML = '<div class="empty-state"><p>Zatiaľ žiadne inzeráty.</p></div>';
+        return;
+    }
+
+    feed.innerHTML = shown.map(recentItem).join('')
+        + (hasMore ? `<button class="recent-show-more" onclick="showMoreRecent()">Zobraziť viac</button>` : '');
+}
+
+function recentItem(l) {
+    const isMatched = !!l.catalog_id;
+    const thumbImg = (isMatched && l.catalog_image)
+        ? `<img src="${esc(l.catalog_image)}" alt="" loading="lazy">`
+        : (l.image_url ? `<img src="${esc(l.image_url)}" alt="" loading="lazy">` : '<div class="recent-thumb-empty">?</div>');
+
+    const catalogLabel = isMatched
+        ? `<span class="recent-catalog" onclick="event.stopPropagation();openDetail(${l.catalog_id})">${esc(l.building || l.catalog_title || '')}</span>`
+        : '';
+
+    const tag = isMatched
+        ? '<span class="recent-tag matched">Identifikované</span>'
+        : '<span class="recent-tag unmatched">Neidentifikované</span>';
+
+    const priceStr = l.price ? `${l.price.toFixed(0)}\u20AC` : (l.price_text || 'Dohodou');
+    const timeAgo = relativeTime(l.first_seen);
+
+    return `
+    <div class="recent-item">
+        <div class="recent-thumb">${thumbImg}</div>
+        <div class="recent-main">
+            <span class="recent-title"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a></span>
+            ${catalogLabel}
+        </div>
+        <div class="recent-right">
+            <span class="recent-price">${priceStr}</span>
+            <a href="${esc(l.url)}" target="_blank" rel="noopener" class="recent-link">bazos \u2192</a>
+        </div>
+        <div class="recent-meta">
+            ${tag}
+            <span class="recent-time">${esc(timeAgo)}</span>
+            <span>${esc(l.location || '')}</span>
+        </div>
+    </div>`;
+}
+
+function showMoreRecent() {
+    recentLimit += 20;
+    refreshData();
+}
+
+function relativeTime(dateStr) {
+    if (!dateStr) return '';
+    const now = new Date();
+    const date = new Date(dateStr.replace(' ', 'T'));
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHr = Math.floor(diffMs / 3600000);
+    const diffDay = Math.floor(diffMs / 86400000);
+
+    if (diffMin < 1) return 'práve teraz';
+    if (diffMin < 60) return `pred ${diffMin} min`;
+    if (diffHr < 24) return `pred ${diffHr} hod`;
+    if (diffDay === 1) return 'včera';
+    if (diffDay < 7) return `pred ${diffDay} dňami`;
+    if (diffDay < 30) return `pred ${Math.floor(diffDay / 7)} týžd`;
+    return formatDateShort(date);
 }
 
 // ── RENDER: CATALOG ──
@@ -1029,20 +1291,11 @@ function catalogCard(c) {
             ${c.ads.length > 3 ? `<span style="font-size:.65rem;color:var(--text-muted);">+ ${c.ads.length - 3} ďalších</span>` : ''}
         </div>` : '';
 
-    const isWatching = watchedIds.has(c.id);
-    const watchBtn = currentUser ? `
-        <button class="watch-btn ${isWatching ? 'watching' : ''}"
-                onclick="toggleWatch(${c.id}, event)"
-                title="${isWatching ? 'Zrušiť sledovanie' : 'Sledovať'}">
-            ${isWatching ? '&#9829;' : '&#9825;'}
-        </button>` : '';
-
     return `
     <div class="catalog-card ${hasAds ? 'has-ads' : ''}"
          onclick="openDetail(${c.id})" style="cursor:pointer">
         <div class="catalog-img-wrap">
             ${c.image_url ? `<img src="${esc(c.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
-            ${watchBtn}
             ${hasAds ? `<span class="catalog-ads-badge">${c.active_count} inzerát${c.active_count > 1 ? 'y' : ''}</span>` : ''}
         </div>
         <div class="catalog-info">
@@ -1180,29 +1433,70 @@ function renderDetail(d) {
                     ${activeAds.length > 0 ? `<span class="modal-tag" style="border-color:var(--green);color:var(--green);">${activeAds.length} aktívn${activeAds.length > 1 ? 'e' : 'y'}</span>` : ''}
                 </div>
                 ${d.archive_url && d.archive_url !== '#' ? `<a href="${esc(d.archive_url)}" target="_blank" rel="noopener" class="modal-archive-link">Zobraziť v archíve \u2192</a>` : ''}
-                ${currentUser ? renderModalWatch(d) : ''}
             </div>
         </div>
+        ${renderNotifySection(d)}
         ${priceSection}
         ${historyRows}`;
 }
 
-function renderModalWatch(d) {
+function renderNotifySection(d) {
     const isWatching = watchedIds.has(d.id);
+
+    if (currentUser && isWatching) {
+        // Logged in + watching: show active state with price filter
+        return `
+        <div class="notify-section">
+            <div class="notify-cta">
+                <span class="notify-cta-icon">&#9889;</span>
+                <div class="notify-cta-text">
+                    <div class="notify-cta-title">Notifikácie zapnuté</div>
+                    <div class="notify-cta-sub">Pošleme ti email keď sa objaví nový inzerát.</div>
+                </div>
+                <button class="notify-btn active" onclick="toggleWatch(${d.id})">&#10003; Aktívne</button>
+            </div>
+            <div class="notify-options">
+                <span class="notify-price-label">Max cena:</span>
+                <input type="number" class="notify-price-input" id="max-price-${d.id}"
+                       placeholder="bez limitu" value="${d._maxPrice || ''}"
+                       onchange="setMaxPrice(${d.id}, this.value ? parseFloat(this.value) : null)">
+                <span class="notify-price-label">&euro;</span>
+            </div>
+        </div>`;
+    }
+
+    if (currentUser) {
+        // Logged in but not watching: show CTA
+        return `
+        <div class="notify-section">
+            <div class="notify-cta">
+                <span class="notify-cta-icon">&#128276;</span>
+                <div class="notify-cta-text">
+                    <div class="notify-cta-title">Chceš vedieť o nových inzerátoch?</div>
+                    <div class="notify-cta-sub">Pošleme ti email hneď ako sa objaví nový inzerát pre túto tlač.</div>
+                </div>
+                <button class="notify-btn" onclick="toggleWatch(${d.id})">Zapnúť notifikácie</button>
+            </div>
+        </div>`;
+    }
+
+    // Not logged in: show CTA with inline email form
     return `
-    <div class="modal-watch-row">
-        <button class="modal-watch-btn ${isWatching ? 'watching' : ''}"
-                onclick="toggleWatch(${d.id})">
-            ${isWatching ? '&#9829; Sledované' : '&#9825; Sledovať'}
-        </button>
-        ${isWatching ? `
-            <span class="modal-price-label">Max cena:</span>
-            <input type="number" class="modal-price-input" id="max-price-${d.id}"
-                   placeholder="bez limitu"
-                   value="${d._maxPrice || ''}"
-                   onchange="setMaxPrice(${d.id}, this.value ? parseFloat(this.value) : null)">
-            <span class="modal-price-label">&euro;</span>
-        ` : ''}
+    <div class="notify-section">
+        <div class="notify-cta">
+            <span class="notify-cta-icon">&#128276;</span>
+            <div class="notify-cta-text">
+                <div class="notify-cta-title">Chceš vedieť o nových inzerátoch?</div>
+                <div class="notify-cta-sub">Zadaj email a pošleme ti notifikáciu keď sa objaví nový inzerát.</div>
+            </div>
+        </div>
+        <div class="notify-email-form" id="notify-form-${d.id}">
+            <input type="email" class="notify-email-input" id="notify-email-${d.id}"
+                   placeholder="tvoj@email.sk"
+                   onkeydown="if(event.key==='Enter')sendNotifyLogin(${d.id})">
+            <button class="notify-send-btn" onclick="sendNotifyLogin(${d.id})">Odoslať odkaz</button>
+            <div class="notify-msg" id="notify-msg-${d.id}"></div>
+        </div>
     </div>`;
 }
 
@@ -1350,11 +1644,7 @@ function renderAuthBar() {
             <span class="auth-status">${esc(currentUser.email)}</span>
             <button class="auth-logout" onclick="logout()">Odhlásiť</button>`;
     } else {
-        bar.innerHTML = `
-            <input type="email" id="auth-email" placeholder="Email..."
-                   onkeydown="if(event.key==='Enter')sendLogin()">
-            <button class="auth-btn" onclick="sendLogin()">Prihlásiť</button>
-            <div class="auth-message" id="auth-msg"></div>`;
+        bar.innerHTML = '';
     }
 }
 
@@ -1373,15 +1663,16 @@ async function checkAuth() {
     } catch { currentUser = null; }
 }
 
-async function sendLogin() {
-    const input = document.getElementById('auth-email');
-    const msg = document.getElementById('auth-msg');
+async function sendNotifyLogin(catalogId) {
+    const input = document.getElementById(`notify-email-${catalogId}`);
+    const msg = document.getElementById(`notify-msg-${catalogId}`);
     const email = input.value.trim();
     if (!email) return;
 
     const btn = input.nextElementSibling;
     btn.disabled = true;
     msg.textContent = '';
+    msg.className = 'notify-msg';
 
     try {
         const r = await fetch('/api/auth/login', {
@@ -1391,14 +1682,14 @@ async function sendLogin() {
         });
         const data = await r.json();
         if (data.ok) {
-            msg.className = 'auth-message';
-            msg.textContent = data.message;
+            msg.className = 'notify-msg ok';
+            msg.textContent = 'Odkaz na prihlásenie bol odoslaný na tvoj email.';
         } else {
-            msg.className = 'auth-message error';
+            msg.className = 'notify-msg error';
             msg.textContent = data.error;
         }
     } catch {
-        msg.className = 'auth-message error';
+        msg.className = 'notify-msg error';
         msg.textContent = 'Chyba pripojenia';
     }
     btn.disabled = false;
@@ -1516,8 +1807,10 @@ document.getElementById('catalog-search').addEventListener('input', e => {
 
         const data = await fetchAll();
         allCatalog = data.catalog;
+        recentListings = data.recent;
 
         renderStats(data.stats);
+        renderRecent();
         renderCatalog();
 
         document.getElementById('loading').classList.add('done');
