@@ -48,6 +48,7 @@ def init_db():
             first_seen TEXT DEFAULT (datetime('now')),
             last_seen TEXT DEFAULT (datetime('now')),
             is_active INTEGER DEFAULT 1,
+            is_buying INTEGER DEFAULT 0,
             FOREIGN KEY (catalog_id) REFERENCES catalog(id)
         );
 
@@ -106,6 +107,23 @@ def init_db():
     cols = [r[1] for r in conn.execute("PRAGMA table_info(catalog)").fetchall()]
     if "image_url" not in cols:
         conn.execute("ALTER TABLE catalog ADD COLUMN image_url TEXT")
+    # Migrate: add is_buying column if missing
+    listing_cols = [r[1] for r in conn.execute("PRAGMA table_info(listings)").fetchall()]
+    if "is_buying" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN is_buying INTEGER DEFAULT 0")
+        # Backfill existing buy-intent listings
+        conn.execute("""
+            UPDATE listings SET is_buying = 1
+            WHERE LOWER(title) LIKE '%kúpim%'
+               OR LOWER(title) LIKE '%kupim%'
+               OR LOWER(title) LIKE '%hľadám%'
+               OR LOWER(title) LIKE '%hladam%'
+               OR LOWER(title) LIKE '%zoženiem%'
+               OR LOWER(title) LIKE '%zozeniam%'
+               OR LOWER(title) LIKE '%dopyt%'
+               OR LOWER(title) LIKE '%zháňam%'
+               OR LOWER(title) LIKE '%zhanam%'
+        """)
     conn.commit()
     conn.close()
 
@@ -148,29 +166,35 @@ def upsert_listing(conn, listing):
         (listing["bazos_id"],)
     ).fetchone()
 
+    is_buying = listing.get("is_buying", 0)
+
     if existing:
         conn.execute("""
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
-                views=?, catalog_id=?, last_seen=datetime('now'), is_active=1
+                views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
+                is_buying=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
-            listing["views"], listing["catalog_id"], listing["bazos_id"]
+            listing["views"], listing["catalog_id"], is_buying,
+            listing["bazos_id"]
         ))
         return existing["id"]
     else:
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
-                date_posted, location, postal_code, url, image_url, views, catalog_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                date_posted, location, postal_code, url, image_url, views, catalog_id,
+                is_buying)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
-            listing["image_url"], listing["views"], listing["catalog_id"]
+            listing["image_url"], listing["views"], listing["catalog_id"],
+            is_buying
         ))
         return cur.lastrowid
 
@@ -218,11 +242,12 @@ def record_snapshots(conn):
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # Get active listing prices grouped by catalog item
+    # Get active listing prices grouped by catalog item (exclude buy-intent)
     rows = conn.execute("""
         SELECT catalog_id, GROUP_CONCAT(price) as prices
         FROM listings
-        WHERE catalog_id IS NOT NULL AND price IS NOT NULL AND is_active = 1
+        WHERE catalog_id IS NOT NULL AND price IS NOT NULL
+              AND is_active = 1 AND is_buying = 0
         GROUP BY catalog_id
     """).fetchall()
 
@@ -251,7 +276,7 @@ def get_snapshots(conn, catalog_id):
 
 
 def get_price_stats(conn):
-    """Get median and count per catalog item."""
+    """Get median and count per catalog item (excludes buy-intent)."""
     rows = conn.execute("""
         SELECT c.id, c.title, c.building, c.artist, c.category,
             COUNT(l.id) as listing_count,
@@ -260,7 +285,7 @@ def get_price_stats(conn):
             AVG(l.price) as avg_price
         FROM catalog c
         JOIN listings l ON l.catalog_id = c.id
-        WHERE l.price IS NOT NULL
+        WHERE l.price IS NOT NULL AND l.is_buying = 0
         GROUP BY c.id
         HAVING listing_count >= 1
         ORDER BY listing_count DESC

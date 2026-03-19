@@ -3,6 +3,17 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
+BUY_INTENT_KEYWORDS = [
+    "kúpim", "kupim", "hľadám", "hladam", "zoženiem", "zozeniam",
+    "dopyt", "zháňam", "zhanam", "kúpime", "kupime", "hľadáme", "hladame",
+]
+
+def is_buy_intent(title):
+    """Check if a listing title indicates buying intent."""
+    t = title.lower()
+    return any(kw in t for kw in BUY_INTENT_KEYWORDS)
+
+
 BASE_URL = "https://ostatne.bazos.sk"
 ARCHIVE_URL = "https://eshop.ciernediery.sk/archive/"
 SEARCH_PATH = "/inzeraty/cierne-diery/"
@@ -96,6 +107,7 @@ def parse_bazos_page(html):
         listing["image_url"] = img["src"] if img else None
 
         listing["catalog_id"] = None  # Will be matched later
+        listing["is_buying"] = 1 if is_buy_intent(listing["title"]) else 0
         listings.append(listing)
 
     return listings

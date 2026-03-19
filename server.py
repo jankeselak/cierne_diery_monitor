@@ -120,7 +120,7 @@ class Handler(SimpleHTTPRequestHandler):
         catalog = conn.execute("""
             SELECT c.*,
                 (SELECT COUNT(*) FROM listings l
-                 WHERE l.catalog_id = c.id AND l.is_active = 1) as active_count
+                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0) as active_count
             FROM catalog c
             ORDER BY c.title
         """).fetchall()
@@ -133,7 +133,7 @@ class Handler(SimpleHTTPRequestHandler):
                     SELECT bazos_id, title, price, price_text, date_posted,
                            location, url, views
                     FROM listings
-                    WHERE catalog_id = ? AND is_active = 1
+                    WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
                     ORDER BY price ASC
                 """, (d["id"],)).fetchall()
                 d["ads"] = [dict(a) for a in ads]
@@ -157,14 +157,14 @@ class Handler(SimpleHTTPRequestHandler):
         # All listings for this item (active + inactive), newest first
         all_listings = conn.execute("""
             SELECT bazos_id, title, price, price_text, date_posted,
-                   location, url, views, is_active, first_seen, last_seen
+                   location, url, views, is_active, is_buying, first_seen, last_seen
             FROM listings
             WHERE catalog_id = ?
             ORDER BY date_posted DESC
         """, (item_id,)).fetchall()
         d["all_listings"] = [dict(l) for l in all_listings]
-        # Price stats
-        prices = [l["price"] for l in all_listings if l["price"]]
+        # Price stats (exclude buy-intent)
+        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"]]
         if prices:
             d["price_stats"] = {
                 "count": len(prices),
@@ -202,7 +202,7 @@ class Handler(SimpleHTTPRequestHandler):
         rows = conn.execute("""
             SELECT l.bazos_id, l.title, l.price, l.price_text, l.location,
                    l.url, l.image_url, l.first_seen, l.date_posted, l.views,
-                   l.catalog_id, l.is_active,
+                   l.catalog_id, l.is_active, l.is_buying,
                    c.title as catalog_title, c.building, c.artist,
                    c.image_url as catalog_image, c.category
             FROM listings l

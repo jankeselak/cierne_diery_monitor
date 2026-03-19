@@ -608,6 +608,7 @@
         }
         .status-active { color: var(--green); }
         .status-inactive { color: var(--text-muted); }
+        .status-buying { color: var(--orange); }
 
         /* No ads */
         .no-ads {
@@ -899,6 +900,10 @@
             color: var(--text-muted);
             border-color: var(--border);
         }
+        .recent-tag.buying {
+            color: var(--orange);
+            border-color: var(--orange-dim);
+        }
         .recent-time {
             font-family: var(--font-mono);
             font-size: .55rem;
@@ -1154,9 +1159,12 @@ function recentItem(l) {
         ? `<span class="recent-catalog" onclick="event.stopPropagation();openDetail(${l.catalog_id})">${esc(l.building || l.catalog_title || '')}</span>`
         : '';
 
-    const tag = isMatched
-        ? '<span class="recent-tag matched">Identifikované</span>'
-        : '<span class="recent-tag unmatched">Neidentifikované</span>';
+    const isBuying = !!l.is_buying;
+    const tag = isBuying
+        ? '<span class="recent-tag buying">Dopyt</span>'
+        : isMatched
+            ? '<span class="recent-tag matched">Identifikované</span>'
+            : '<span class="recent-tag unmatched">Neidentifikované</span>';
 
     const priceStr = l.price ? `${l.price.toFixed(0)}\u20AC` : (l.price_text || 'Dohodou');
     const timeAgo = relativeTime(l.first_seen);
@@ -1418,8 +1426,8 @@ function renderDetail(d) {
                         </div>
                         <div class="history-location">${esc(l.location || '')}</div>
                         <div class="history-date">${esc(l.date_posted || '')}</div>
-                        <div class="history-status ${l.is_active ? 'status-active' : 'status-inactive'}">
-                            ${l.is_active ? 'Aktívny' : 'Neaktívny'}
+                        <div class="history-status ${l.is_buying ? 'status-buying' : l.is_active ? 'status-active' : 'status-inactive'}">
+                            ${l.is_buying ? 'Dopyt' : l.is_active ? 'Aktívny' : 'Neaktívny'}
                         </div>
                     </div>`).join('')}
             </div>
