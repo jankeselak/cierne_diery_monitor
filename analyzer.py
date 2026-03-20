@@ -142,4 +142,10 @@ def get_stats_summary(conn):
     stats["max_price"] = row["max_p"]
     stats["avg_price"] = row["avg_p"]
 
+    row = conn.execute("""
+        SELECT COUNT(*) as n FROM listings
+        WHERE first_seen >= datetime('now', '-7 days')
+    """).fetchone()
+    stats["new_this_week"] = row["n"]
+
     return stats
