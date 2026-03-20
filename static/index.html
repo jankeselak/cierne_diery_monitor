@@ -942,6 +942,227 @@
             .recent-arrow { display: none; }
         }
 
+        /* ── COLLECTION BUTTON (in modal) ── */
+        .collection-btn {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: none;
+            border: 1px solid var(--border);
+            padding: .3em .7em;
+            cursor: pointer;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: .3em;
+        }
+        .collection-btn:hover { color: var(--text); border-color: var(--border-light); }
+        .collection-btn.owned {
+            color: var(--green);
+            border-color: var(--green);
+        }
+        .collection-btn.owned:hover { opacity: .7; }
+
+        /* ── COLLECTION PRICE INPUT (in modal) ── */
+        .collection-price-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-top: .5rem;
+        }
+        .collection-price-input {
+            font-family: var(--font-mono);
+            font-size: .7rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: .35em .6em;
+            width: 80px;
+            outline: none;
+        }
+        .collection-price-input:focus { border-color: var(--green); }
+        .collection-price-input::placeholder { color: var(--text-muted); }
+        .collection-price-label {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            color: var(--text-muted);
+            letter-spacing: .06em;
+        }
+
+        /* ── NAV TOGGLE ── */
+        .nav-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+        .nav-toggle-btn {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color .15s;
+            padding: 0;
+            line-height: 1;
+        }
+        .nav-toggle-btn:hover { color: var(--text-dim); }
+        .nav-toggle-btn.active { color: var(--text); }
+        .nav-toggle-sep {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: var(--text-muted);
+            margin: 0 .8rem;
+            line-height: 1;
+            user-select: none;
+        }
+
+        /* ── PORTFOLIO VIEW ── */
+        .portfolio-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .portfolio-stat {
+            padding: 1rem 1.5rem;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .portfolio-stat:last-child { border-right: none; }
+        .portfolio-stat-value {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.02em;
+        }
+        .portfolio-stat-value.positive { color: var(--green); }
+        .portfolio-stat-value.negative { color: var(--pink); }
+        .portfolio-stat-label {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: .3rem;
+        }
+
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+        }
+        .portfolio-card {
+            background: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            transition: background .15s;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .portfolio-card:hover { background: var(--bg-card-hover); }
+        .portfolio-card-img {
+            position: relative;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+            background: var(--bg);
+        }
+        .portfolio-card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform .3s ease;
+        }
+        .portfolio-card:hover .portfolio-card-img img {
+            transform: scale(1.03);
+        }
+        .portfolio-card-info {
+            padding: .8rem 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: .25rem;
+        }
+        .portfolio-card-building {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+            line-height: 1.15;
+        }
+        .portfolio-card-artist {
+            font-size: .72rem;
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+        .portfolio-card-values {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: .4rem;
+            padding-top: .4rem;
+            border-top: 1px solid var(--border);
+        }
+        .portfolio-card-price {
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            font-weight: 500;
+        }
+        .portfolio-card-gain {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            font-weight: 500;
+        }
+        .portfolio-card-gain.positive { color: var(--green); }
+        .portfolio-card-gain.negative { color: var(--pink); }
+        .portfolio-card-gain.neutral { color: var(--text-muted); }
+        .portfolio-card-cost {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            color: var(--text-muted);
+        }
+        .portfolio-card-remove {
+            font-family: var(--font-mono);
+            font-size: .55rem;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: .2em .4em;
+            transition: color .15s;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            align-self: flex-end;
+        }
+        .portfolio-card-remove:hover { color: var(--pink); }
+
+        @media (max-width: 1100px) {
+            .portfolio-grid { grid-template-columns: repeat(3, 1fr); }
+            .portfolio-summary { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 900px) {
+            .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 720px) {
+            .portfolio-summary { grid-template-columns: repeat(2, 1fr); }
+            .portfolio-stat:nth-child(2) { border-right: none; }
+            .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
         /* ── EMPTY STATE ── */
         .empty-state {
             text-align: center;
@@ -1040,11 +1261,13 @@
         </section>
     </div>
 
-    <!-- CATALOG -->
+    <!-- CATALOG / COLLECTION -->
     <div class="container">
         <section class="section" style="border-bottom:none;">
             <div class="section-header">
-                <h2 class="section-title">Katalóg</h2>
+                <div id="section-nav">
+                    <h2 class="section-title">Katalóg</h2>
+                </div>
                 <span class="section-subtitle" id="catalog-subtitle"></span>
             </div>
             <div class="catalog-controls">
@@ -1055,6 +1278,11 @@
             </div>
             <div class="catalog-grid" id="catalog-grid"></div>
             <div class="catalog-count" id="catalog-count"></div>
+            <!-- Portfolio view (hidden by default) -->
+            <div id="portfolio-view" style="display:none;">
+                <div id="portfolio-summary"></div>
+                <div class="portfolio-grid" id="portfolio-grid"></div>
+            </div>
         </section>
     </div>
 </div>
@@ -1069,6 +1297,9 @@ let currentUser = null; // { email, token }
 let watchedIds = new Set(); // catalog_ids being watched
 let recentListings = [];
 let recentLimit = 20;
+let collectionIds = new Set(); // catalog_ids in collection
+let collectionData = null; // { items, summary } from API
+let activeView = 'catalog'; // 'catalog' or 'collection'
 
 // ── DATA FETCHING ──
 async function fetchAll() {
@@ -1335,6 +1566,148 @@ function setCatalogFilter(cat) {
     renderCatalog();
 }
 
+// ── NAV TOGGLE ──
+function renderSectionNav() {
+    const nav = document.getElementById('section-nav');
+    if (!currentUser) {
+        nav.innerHTML = '<h2 class="section-title">Katalóg</h2>';
+        return;
+    }
+    nav.innerHTML = `
+        <div class="nav-toggle">
+            <button class="nav-toggle-btn ${activeView === 'catalog' ? 'active' : ''}"
+                    onclick="switchView('catalog')">Katalóg</button>
+            <span class="nav-toggle-sep">/</span>
+            <button class="nav-toggle-btn ${activeView === 'collection' ? 'active' : ''}"
+                    onclick="switchView('collection')">Moja zbierka</button>
+        </div>`;
+}
+
+function switchView(view) {
+    activeView = view;
+    renderSectionNav();
+    const catalogEls = ['catalog-controls-wrap', 'catalog-grid', 'catalog-count'];
+    const portfolioEl = document.getElementById('portfolio-view');
+
+    // The catalog controls, grid, and count don't have a wrapper — toggle them
+    document.querySelector('.catalog-controls').style.display = view === 'catalog' ? '' : 'none';
+    document.getElementById('catalog-grid').style.display = view === 'catalog' ? '' : 'none';
+    document.getElementById('catalog-count').style.display = view === 'catalog' ? '' : 'none';
+    portfolioEl.style.display = view === 'collection' ? '' : 'none';
+
+    const subtitle = document.getElementById('catalog-subtitle');
+
+    if (view === 'collection') {
+        subtitle.textContent = '';
+        loadAndRenderPortfolio();
+    } else {
+        renderCatalog();
+    }
+}
+
+// ── PORTFOLIO ──
+async function loadAndRenderPortfolio() {
+    const grid = document.getElementById('portfolio-grid');
+    const summaryEl = document.getElementById('portfolio-summary');
+
+    grid.innerHTML = '<div style="padding:3rem;text-align:center;grid-column:1/-1;"><span style="font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);letter-spacing:.3em;animation:pulse 1.5s infinite;">LOADING</span></div>';
+    summaryEl.innerHTML = '';
+
+    try {
+        const r = await fetch('/api/collection', { headers: authHeaders() });
+        collectionData = await r.json();
+        if (collectionData.error) {
+            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>${esc(collectionData.error)}</p></div>`;
+            return;
+        }
+        collectionIds = new Set(collectionData.items.map(i => i.catalog_id));
+        renderPortfolio();
+    } catch (e) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Chyba pri načítaní zbierky</p></div>';
+    }
+}
+
+function renderPortfolio() {
+    if (!collectionData) return;
+    const { items, summary } = collectionData;
+    const summaryEl = document.getElementById('portfolio-summary');
+    const grid = document.getElementById('portfolio-grid');
+
+    // Summary bar
+    const returnClass = summary.return !== null
+        ? (summary.return >= 0 ? 'positive' : 'negative') : '';
+    const returnStr = summary.return !== null
+        ? `${summary.return >= 0 ? '+' : ''}${summary.return.toFixed(0)}€` : '—';
+
+    summaryEl.innerHTML = `
+        <div class="portfolio-summary">
+            <div class="portfolio-stat">
+                <span class="portfolio-stat-value">${summary.count}</span>
+                <span class="portfolio-stat-label">V zbierke</span>
+            </div>
+            <div class="portfolio-stat">
+                <span class="portfolio-stat-value">${summary.total_value.toFixed(0)}€</span>
+                <span class="portfolio-stat-label">Hodnota</span>
+            </div>
+            <div class="portfolio-stat">
+                <span class="portfolio-stat-value">${summary.total_cost !== null ? summary.total_cost.toFixed(0) + '€' : '—'}</span>
+                <span class="portfolio-stat-label">Investícia</span>
+            </div>
+            <div class="portfolio-stat">
+                <span class="portfolio-stat-value ${returnClass}">${returnStr}</span>
+                <span class="portfolio-stat-label">Návratnosť</span>
+            </div>
+        </div>`;
+
+    if (items.length === 0) {
+        grid.style.background = 'none';
+        grid.style.border = 'none';
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+            <h3>Zatiaľ prázdna zbierka</h3>
+            <p>Otvor detail tlače v katalógu a klikni na „Vlastním" pre pridanie do zbierky.</p>
+        </div>`;
+        return;
+    }
+
+    grid.style.background = '';
+    grid.style.border = '';
+    grid.innerHTML = items.map(portfolioCard).join('');
+}
+
+function portfolioCard(item) {
+    const building = item.building || item.title || '';
+    const value = item.current_value;
+    const valueStr = value !== null ? `${value.toFixed(0)}€` : 'N/A';
+    const costStr = item.purchase_price !== null ? `${item.purchase_price.toFixed(0)}€` : '';
+
+    let gainHtml = '';
+    if (value !== null && item.purchase_price !== null) {
+        const gain = value - item.purchase_price;
+        const cls = gain >= 0 ? 'positive' : 'negative';
+        gainHtml = `<span class="portfolio-card-gain ${cls}">${gain >= 0 ? '+' : ''}${gain.toFixed(0)}€</span>`;
+    } else if (value !== null) {
+        gainHtml = `<span class="portfolio-card-gain neutral">${valueStr}</span>`;
+    }
+
+    return `
+    <div class="portfolio-card" onclick="openDetail(${item.catalog_id})">
+        <div class="portfolio-card-img">
+            ${item.image_url ? `<img src="${esc(item.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
+        </div>
+        <div class="portfolio-card-info">
+            <div class="portfolio-card-building">${esc(building)}</div>
+            ${item.artist ? `<div class="portfolio-card-artist">${esc(item.artist)}</div>` : ''}
+            <div class="portfolio-card-values">
+                <div>
+                    <div class="portfolio-card-price">${valueStr}</div>
+                    ${costStr ? `<div class="portfolio-card-cost">Kúpené za ${costStr}</div>` : ''}
+                </div>
+                ${gainHtml}
+            </div>
+        </div>
+    </div>`;
+}
+
 // ── DETAIL MODAL ──
 async function openDetail(catalogId) {
     const overlay = document.getElementById('modal-overlay');
@@ -1449,8 +1822,10 @@ function renderDetail(d) {
                     ${d.location ? `<span class="modal-tag">${esc(d.location)}</span>` : ''}
                     ${d.category ? `<span class="modal-tag">${esc(d.category)}</span>` : ''}
                     ${activeAds.length > 0 ? `<span class="modal-tag" style="border-color:var(--green);color:var(--green);">${activeAds.length} aktívn${activeAds.length > 1 ? 'e' : 'y'}</span>` : ''}
+                    ${currentUser ? renderCollectionBtn(d) : ''}
                 </div>
                 ${d.archive_url && d.archive_url !== '#' ? `<a href="${esc(d.archive_url)}" target="_blank" rel="noopener" class="modal-archive-link">Zobraziť v archíve \u2192</a>` : ''}
+                ${currentUser && collectionIds.has(d.id) ? renderCollectionPriceRow(d) : ''}
             </div>
         </div>
         ${renderNotifySection(d)}
@@ -1717,8 +2092,12 @@ function logout() {
     localStorage.removeItem('auth_token');
     currentUser = null;
     watchedIds.clear();
+    collectionIds.clear();
+    collectionData = null;
+    activeView = 'catalog';
     renderAuthBar();
-    renderCatalog();
+    renderSectionNav();
+    switchView('catalog');
 }
 
 // Handle magic link verification on page load
@@ -1797,6 +2176,85 @@ async function setMaxPrice(catalogId, maxPrice) {
     } catch {}
 }
 
+// ── COLLECTION ──
+async function loadCollection() {
+    if (!currentUser) { collectionIds.clear(); collectionData = null; return; }
+    try {
+        const r = await fetch('/api/collection', { headers: authHeaders() });
+        collectionData = await r.json();
+        if (Array.isArray(collectionData.items)) {
+            collectionIds = new Set(collectionData.items.map(i => i.catalog_id));
+        }
+    } catch { collectionIds.clear(); collectionData = null; }
+}
+
+function renderCollectionBtn(d) {
+    const isOwned = collectionIds.has(d.id);
+    return `<button class="collection-btn ${isOwned ? 'owned' : ''}"
+                onclick="event.stopPropagation();toggleCollection(${d.id})">
+        ${isOwned ? '&#10003; Vlastním' : '+ Vlastním'}
+    </button>`;
+}
+
+function renderCollectionPriceRow(d) {
+    // Find purchase price from collection data
+    let price = '';
+    if (collectionData && collectionData.items) {
+        const item = collectionData.items.find(i => i.catalog_id === d.id);
+        if (item && item.purchase_price !== null) price = item.purchase_price;
+    }
+    return `
+    <div class="collection-price-row">
+        <span class="collection-price-label">Kúpené za:</span>
+        <input type="number" class="collection-price-input" id="col-price-${d.id}"
+               placeholder="—" value="${price}"
+               onchange="updateCollectionPrice(${d.id}, this.value ? parseFloat(this.value) : null)">
+        <span class="collection-price-label">&euro;</span>
+    </div>`;
+}
+
+async function toggleCollection(catalogId) {
+    if (!currentUser) return;
+    const isOwned = collectionIds.has(catalogId);
+    const method = isOwned ? 'DELETE' : 'POST';
+
+    try {
+        await fetch('/api/collection', {
+            method,
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ catalog_id: catalogId }),
+        });
+        if (isOwned) {
+            collectionIds.delete(catalogId);
+        } else {
+            collectionIds.add(catalogId);
+        }
+        // Reload collection data for accurate values
+        await loadCollection();
+        // Re-render modal if open
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay.classList.contains('open')) {
+            openDetail(catalogId);
+        }
+    } catch {}
+}
+
+async function updateCollectionPrice(catalogId, price) {
+    if (!currentUser) return;
+    try {
+        await fetch('/api/collection', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ catalog_id: catalogId, purchase_price: price }),
+        });
+        // Update local data
+        if (collectionData && collectionData.items) {
+            const item = collectionData.items.find(i => i.catalog_id === catalogId);
+            if (item) item.purchase_price = price;
+        }
+    } catch {}
+}
+
 // ── UTILS ──
 function esc(str) {
     if (!str) return '';
@@ -1820,8 +2278,8 @@ document.getElementById('catalog-search').addEventListener('input', e => {
         await checkAuth();
         renderAuthBar();
 
-        // Load watchlist if logged in
-        await loadWatchlist();
+        // Load watchlist + collection if logged in
+        await Promise.all([loadWatchlist(), loadCollection()]);
 
         const data = await fetchAll();
         allCatalog = data.catalog;
@@ -1829,6 +2287,7 @@ document.getElementById('catalog-search').addEventListener('input', e => {
 
         renderStats(data.stats);
         renderRecent();
+        renderSectionNav();
         renderCatalog();
 
         document.getElementById('loading').classList.add('done');
