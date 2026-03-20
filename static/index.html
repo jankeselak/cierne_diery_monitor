@@ -163,7 +163,7 @@
         /* ── STATS BAR ── */
         .stats-bar {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             border-bottom: 1px solid var(--border);
         }
         .stat-item {
@@ -609,6 +609,7 @@
         .status-active { color: var(--green); }
         .status-inactive { color: var(--text-muted); }
         .status-buying { color: var(--orange); }
+        .status-trading { color: var(--blue); }
 
         /* No ads */
         .no-ads {
@@ -1341,26 +1342,38 @@ async function refreshData() {
 // ── RENDER: STATS ──
 function renderStats(s) {
     const bar = document.getElementById('stats-bar');
+
+    // Third stat: collection value (logged in) or teaser (logged out)
+    let thirdStat;
+    if (currentUser && collectionData && collectionData.summary) {
+        const val = collectionData.summary.total_value || 0;
+        thirdStat = `
+            <div class="stat-item" style="cursor:pointer;" onclick="switchView('collection')">
+                <span class="stat-value" data-target="${Math.round(val)}" data-suffix="€">0€</span>
+                <span class="stat-label">Moja zbierka</span>
+            </div>`;
+    } else {
+        thirdStat = `
+            <div class="stat-item">
+                <span class="stat-value" style="font-size:1.2rem;color:var(--text-muted);cursor:pointer;"
+                      onclick="document.querySelector('.notify-section')&&openDetail(allCatalog[0]?.id)">—</span>
+                <span class="stat-label">Moja zbierka</span>
+            </div>`;
+    }
+
     bar.innerHTML = `
         <div class="stat-item">
             <span class="stat-value" data-target="${s.active_listings}">0</span>
             <span class="stat-label">Aktívnych inzerátov</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value" data-target="${s.catalog_count}">0</span>
-            <span class="stat-label">V katalógu</span>
+            <span class="stat-value" data-target="${s.new_this_week || 0}">0</span>
+            <span class="stat-label">Nových tento týždeň</span>
         </div>
-        <div class="stat-item">
-            <span class="stat-value" data-target="${Math.round(s.avg_price || 0)}" data-suffix="€">0€</span>
-            <span class="stat-label">Priemerná cena</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-value stat-accent" data-target="${s.great_deals}">0</span>
-            <span class="stat-label">Výhodných ponúk</span>
-        </div>
+        ${thirdStat}
     `;
     // Animate counters
-    bar.querySelectorAll('.stat-value').forEach(el => {
+    bar.querySelectorAll('.stat-value[data-target]').forEach(el => {
         animateNumber(el, parseInt(el.dataset.target), el.dataset.suffix || '');
     });
 }
@@ -1405,11 +1418,14 @@ function recentItem(l) {
         : '';
 
     const isBuying = !!l.is_buying;
-    const tag = isBuying
+    const isTrading = !!l.is_trading;
+    const tradeBadge = isTrading ? '<span class="recent-tag" style="color:var(--blue);border-color:var(--blue-dim);">Výmena</span>' : '';
+    const mainTag = isBuying
         ? '<span class="recent-tag buying">Dopyt</span>'
         : isMatched
             ? '<span class="recent-tag matched">Identifikované</span>'
             : '<span class="recent-tag unmatched">Neidentifikované</span>';
+    const tag = mainTag + tradeBadge;
 
     const priceStr = l.price ? `${l.price.toFixed(0)}\u20AC` : (l.price_text || 'Dohodou');
     const timeAgo = relativeTime(l.first_seen);
@@ -1820,7 +1836,7 @@ function renderDetail(d) {
                         <div class="history-location">${esc(l.location || '')}</div>
                         <div class="history-date">${esc(l.date_posted || '')}</div>
                         <div class="history-status ${l.is_buying ? 'status-buying' : l.is_active ? 'status-active' : 'status-inactive'}">
-                            ${l.is_buying ? 'Dopyt' : l.is_active ? 'Aktívny' : 'Neaktívny'}
+                            ${l.is_buying ? 'Dopyt' : l.is_active ? 'Aktívny' : 'Neaktívny'}${l.is_trading ? ' <span class="status-trading">/ Výmena</span>' : ''}
                         </div>
                     </div>`).join('')}
             </div>
@@ -2257,6 +2273,8 @@ async function toggleCollection(catalogId) {
             collectionIds.delete(catalogId);
         } else {
             collectionIds.add(catalogId);
+            // Server auto-watches on collect — sync local state
+            watchedIds.add(catalogId);
         }
         // Reload collection data in background
         loadCollection();

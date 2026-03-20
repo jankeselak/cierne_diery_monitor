@@ -167,14 +167,14 @@ class Handler(SimpleHTTPRequestHandler):
         # All listings for this item (active + inactive), newest first
         all_listings = conn.execute("""
             SELECT bazos_id, title, price, price_text, date_posted,
-                   location, url, views, is_active, is_buying, first_seen, last_seen
+                   location, url, views, is_active, is_buying, is_trading, first_seen, last_seen
             FROM listings
             WHERE catalog_id = ?
             ORDER BY date_posted DESC
         """, (item_id,)).fetchall()
         d["all_listings"] = [dict(l) for l in all_listings]
         # Price stats (exclude buy-intent)
-        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"]]
+        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"] and not l["is_trading"]]
         if prices:
             d["price_stats"] = {
                 "count": len(prices),
@@ -212,7 +212,7 @@ class Handler(SimpleHTTPRequestHandler):
         rows = conn.execute("""
             SELECT l.bazos_id, l.title, l.price, l.price_text, l.location,
                    l.url, l.image_url, l.first_seen, l.date_posted, l.views,
-                   l.catalog_id, l.is_active, l.is_buying,
+                   l.catalog_id, l.is_active, l.is_buying, l.is_trading,
                    c.title as catalog_title, c.building, c.artist,
                    c.image_url as catalog_image, c.category
             FROM listings l
@@ -358,15 +358,17 @@ class Handler(SimpleHTTPRequestHandler):
 
         items = []
         total_value = 0
-        total_cost = 0
-        has_cost = False
+        # For return calculation: only items with BOTH value and purchase price
+        return_value = 0
+        return_cost = 0
 
         for row in rows:
             d = dict(row)
-            # Current value = median of active sell listings
+            # Current value = median of active sell listings (exclude buy+trade)
             active_prices = conn.execute("""
                 SELECT price FROM listings
-                WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
+                WHERE catalog_id = ? AND is_active = 1
+                      AND is_buying = 0
                       AND price IS NOT NULL
             """, (d["catalog_id"],)).fetchall()
 
@@ -384,20 +386,22 @@ class Handler(SimpleHTTPRequestHandler):
 
             if d["current_value"] is not None:
                 total_value += d["current_value"]
-
-            if d["purchase_price"] is not None:
-                total_cost += d["purchase_price"]
-                has_cost = True
+                # Only include in return calc if we know both sides
+                if d["purchase_price"] is not None:
+                    return_value += d["current_value"]
+                    return_cost += d["purchase_price"]
 
             items.append(d)
 
         conn.close()
 
+        has_return = return_cost > 0 or return_value > 0
+
         summary = {
             "count": len(items),
             "total_value": round(total_value, 2),
-            "total_cost": round(total_cost, 2) if has_cost else None,
-            "return": round(total_value - total_cost, 2) if has_cost else None,
+            "total_cost": round(return_cost, 2) if has_return else None,
+            "return": round(return_value - return_cost, 2) if has_return else None,
         }
 
         return {"items": items, "summary": summary}
@@ -437,6 +441,16 @@ class Handler(SimpleHTTPRequestHandler):
                 "INSERT INTO collection (user_id, catalog_id, purchase_price) VALUES (?, ?, ?)",
                 (user["id"], catalog_id, purchase_price),
             )
+            # Auto-watch: enable notifications when adding to collection
+            watched = conn.execute(
+                "SELECT id FROM watchlist WHERE user_id = ? AND catalog_id = ?",
+                (user["id"], catalog_id),
+            ).fetchone()
+            if not watched:
+                conn.execute(
+                    "INSERT INTO watchlist (user_id, catalog_id) VALUES (?, ?)",
+                    (user["id"], catalog_id),
+                )
         conn.commit()
         conn.close()
         return {"ok": True}
