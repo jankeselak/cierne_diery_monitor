@@ -1620,37 +1620,42 @@ async function loadAndRenderPortfolio() {
             grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>${esc(collectionData.error)}</p></div>`;
             return;
         }
-        collectionIds = new Set(collectionData.items.map(i => i.catalog_id));
+        collectionIds = new Set((collectionData.items || []).map(i => i.catalog_id));
         renderPortfolio();
     } catch (e) {
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Chyba pri načítaní zbierky</p></div>';
+        console.error('Collection load error:', e);
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>Chyba pri načítaní zbierky</p></div>`;
     }
 }
 
 function renderPortfolio() {
     if (!collectionData) return;
-    const { items, summary } = collectionData;
+    const items = collectionData.items || [];
+    const summary = collectionData.summary || {};
     const summaryEl = document.getElementById('portfolio-summary');
     const grid = document.getElementById('portfolio-grid');
 
-    // Summary bar
-    const returnClass = summary.return !== null
-        ? (summary.return >= 0 ? 'positive' : 'negative') : '';
-    const returnStr = summary.return !== null
-        ? `${summary.return >= 0 ? '+' : ''}${summary.return.toFixed(0)}€` : '—';
+    // Summary bar — defensive number formatting
+    const totalValue = typeof summary.total_value === 'number' ? summary.total_value : 0;
+    const totalCost = typeof summary.total_cost === 'number' ? summary.total_cost : null;
+    const totalReturn = typeof summary.return === 'number' ? summary.return : null;
+    const returnClass = totalReturn !== null
+        ? (totalReturn >= 0 ? 'positive' : 'negative') : '';
+    const returnStr = totalReturn !== null
+        ? `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(0)}€` : '—';
 
     summaryEl.innerHTML = `
         <div class="portfolio-summary">
             <div class="portfolio-stat">
-                <span class="portfolio-stat-value">${summary.count}</span>
+                <span class="portfolio-stat-value">${summary.count || 0}</span>
                 <span class="portfolio-stat-label">V zbierke</span>
             </div>
             <div class="portfolio-stat">
-                <span class="portfolio-stat-value">${summary.total_value.toFixed(0)}€</span>
+                <span class="portfolio-stat-value">${totalValue.toFixed(0)}€</span>
                 <span class="portfolio-stat-label">Hodnota</span>
             </div>
             <div class="portfolio-stat">
-                <span class="portfolio-stat-value">${summary.total_cost !== null ? summary.total_cost.toFixed(0) + '€' : '—'}</span>
+                <span class="portfolio-stat-value">${totalCost !== null ? totalCost.toFixed(0) + '€' : '—'}</span>
                 <span class="portfolio-stat-label">Investícia</span>
             </div>
             <div class="portfolio-stat">
@@ -1676,13 +1681,14 @@ function renderPortfolio() {
 
 function portfolioCard(item) {
     const building = item.building || item.title || '';
-    const value = item.current_value;
+    const value = typeof item.current_value === 'number' ? item.current_value : null;
+    const cost = typeof item.purchase_price === 'number' ? item.purchase_price : null;
     const valueStr = value !== null ? `${value.toFixed(0)}€` : 'N/A';
-    const costStr = item.purchase_price !== null ? `${item.purchase_price.toFixed(0)}€` : '';
+    const costStr = cost !== null ? `${cost.toFixed(0)}€` : '';
 
     let gainHtml = '';
-    if (value !== null && item.purchase_price !== null) {
-        const gain = value - item.purchase_price;
+    if (value !== null && cost !== null) {
+        const gain = value - cost;
         const cls = gain >= 0 ? 'positive' : 'negative';
         gainHtml = `<span class="portfolio-card-gain ${cls}">${gain >= 0 ? '+' : ''}${gain.toFixed(0)}€</span>`;
     } else if (value !== null) {
@@ -2181,11 +2187,15 @@ async function loadCollection() {
     if (!currentUser) { collectionIds.clear(); collectionData = null; return; }
     try {
         const r = await fetch('/api/collection', { headers: authHeaders() });
-        collectionData = await r.json();
-        if (Array.isArray(collectionData.items)) {
-            collectionIds = new Set(collectionData.items.map(i => i.catalog_id));
-        }
-    } catch { collectionIds.clear(); collectionData = null; }
+        const data = await r.json();
+        if (data.error) { console.warn('Collection load:', data.error); return; }
+        collectionData = data;
+        collectionIds = new Set((data.items || []).map(i => i.catalog_id));
+    } catch (e) {
+        console.error('Collection load error:', e);
+        collectionIds.clear();
+        collectionData = null;
+    }
 }
 
 function renderCollectionBtn(d) {
@@ -2219,24 +2229,59 @@ async function toggleCollection(catalogId) {
     const method = isOwned ? 'DELETE' : 'POST';
 
     try {
-        await fetch('/api/collection', {
+        const r = await fetch('/api/collection', {
             method,
             headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ catalog_id: catalogId }),
         });
+        const result = await r.json();
+        if (result.error) { console.error('Collection toggle error:', result.error); return; }
+
         if (isOwned) {
             collectionIds.delete(catalogId);
         } else {
             collectionIds.add(catalogId);
         }
-        // Reload collection data for accurate values
-        await loadCollection();
-        // Re-render modal if open
-        const overlay = document.getElementById('modal-overlay');
-        if (overlay.classList.contains('open')) {
-            openDetail(catalogId);
+        // Reload collection data in background
+        loadCollection();
+        // Update modal inline (no full reload)
+        refreshModalCollection(catalogId);
+    } catch (e) { console.error('Collection toggle error:', e); }
+}
+
+function refreshModalCollection(catalogId) {
+    // Update the collection button in-place
+    const overlay = document.getElementById('modal-overlay');
+    if (!overlay.classList.contains('open')) return;
+
+    const body = document.getElementById('modal-body');
+    // Find and replace the collection button
+    const btns = body.querySelectorAll('.collection-btn');
+    btns.forEach(btn => {
+        const isOwned = collectionIds.has(catalogId);
+        btn.className = `collection-btn ${isOwned ? 'owned' : ''}`;
+        btn.innerHTML = isOwned ? '&#10003; Vlastním' : '+ Vlastním';
+    });
+
+    // Show/hide price row
+    const existingRow = body.querySelector('.collection-price-row');
+    if (collectionIds.has(catalogId) && !existingRow) {
+        // Add price row after modal-archive-link or at end of modal-meta
+        const meta = body.querySelector('.modal-meta');
+        if (meta) {
+            const row = document.createElement('div');
+            row.className = 'collection-price-row';
+            row.innerHTML = `
+                <span class="collection-price-label">Kúpené za:</span>
+                <input type="number" class="collection-price-input" id="col-price-${catalogId}"
+                       placeholder="—" value=""
+                       onchange="updateCollectionPrice(${catalogId}, this.value ? parseFloat(this.value) : null)">
+                <span class="collection-price-label">&euro;</span>`;
+            meta.appendChild(row);
         }
-    } catch {}
+    } else if (!collectionIds.has(catalogId) && existingRow) {
+        existingRow.remove();
+    }
 }
 
 async function updateCollectionPrice(catalogId, price) {
