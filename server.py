@@ -38,6 +38,12 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def do_PATCH(self):
+        if self.path.startswith("/api/"):
+            self._handle_api()
+        else:
+            self.send_error(404)
+
     def _get_params(self):
         parsed = urlparse(self.path)
         return parse_qs(parsed.query)
@@ -74,6 +80,10 @@ class Handler(SimpleHTTPRequestHandler):
             ("GET", "/api/watchlist"): self._api_watchlist_get,
             ("POST", "/api/watchlist"): self._api_watchlist_add,
             ("DELETE", "/api/watchlist"): self._api_watchlist_remove,
+            ("GET", "/api/collection"): self._api_collection_get,
+            ("POST", "/api/collection"): self._api_collection_add,
+            ("DELETE", "/api/collection"): self._api_collection_remove,
+            ("PATCH", "/api/collection"): self._api_collection_update,
         }
         handler = routes.get((method, path))
         if handler:
@@ -323,6 +333,149 @@ class Handler(SimpleHTTPRequestHandler):
         conn.execute(
             "DELETE FROM watchlist WHERE user_id = ? AND catalog_id = ?",
             (user["id"], catalog_id),
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True}
+
+    # ── COLLECTION ──
+
+    def _api_collection_get(self):
+        user = self._get_current_user()
+        if not user:
+            return {"error": "Neprihlásený"}
+
+        conn = db.get_connection()
+        rows = conn.execute("""
+            SELECT col.id, col.catalog_id, col.purchase_price, col.added_at,
+                   c.title, c.building, c.artist, c.image_url, c.category,
+                   c.location, c.archive_url
+            FROM collection col
+            JOIN catalog c ON col.catalog_id = c.id
+            WHERE col.user_id = ?
+            ORDER BY col.added_at DESC
+        """, (user["id"],)).fetchall()
+
+        items = []
+        total_value = 0
+        total_cost = 0
+        has_cost = False
+
+        for row in rows:
+            d = dict(row)
+            # Current value = median of active sell listings
+            active_prices = conn.execute("""
+                SELECT price FROM listings
+                WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
+                      AND price IS NOT NULL
+            """, (d["catalog_id"],)).fetchall()
+
+            if active_prices:
+                prices = [r["price"] for r in active_prices]
+                d["current_value"] = calc_median(prices)
+            else:
+                # Fallback: last known snapshot median
+                snap = conn.execute("""
+                    SELECT median_price FROM price_snapshots
+                    WHERE catalog_id = ?
+                    ORDER BY scraped_at DESC LIMIT 1
+                """, (d["catalog_id"],)).fetchone()
+                d["current_value"] = snap["median_price"] if snap else None
+
+            if d["current_value"] is not None:
+                total_value += d["current_value"]
+
+            if d["purchase_price"] is not None:
+                total_cost += d["purchase_price"]
+                has_cost = True
+
+            items.append(d)
+
+        conn.close()
+
+        summary = {
+            "count": len(items),
+            "total_value": round(total_value, 2),
+            "total_cost": round(total_cost, 2) if has_cost else None,
+            "return": round(total_value - total_cost, 2) if has_cost else None,
+        }
+
+        return {"items": items, "summary": summary}
+
+    def _api_collection_add(self):
+        user = self._get_current_user()
+        if not user:
+            return {"error": "Neprihlásený"}
+
+        body = self._read_json_body()
+        catalog_id = body.get("catalog_id")
+        purchase_price = body.get("purchase_price")
+
+        if not catalog_id:
+            return {"error": "Chýba catalog_id"}
+
+        conn = db.get_connection()
+        item = conn.execute(
+            "SELECT id FROM catalog WHERE id = ?", (catalog_id,)
+        ).fetchone()
+        if not item:
+            conn.close()
+            return {"error": "Položka neexistuje"}
+
+        existing = conn.execute(
+            "SELECT id FROM collection WHERE user_id = ? AND catalog_id = ?",
+            (user["id"], catalog_id),
+        ).fetchone()
+
+        if existing:
+            conn.execute(
+                "UPDATE collection SET purchase_price = ? WHERE id = ?",
+                (purchase_price, existing["id"]),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO collection (user_id, catalog_id, purchase_price) VALUES (?, ?, ?)",
+                (user["id"], catalog_id, purchase_price),
+            )
+        conn.commit()
+        conn.close()
+        return {"ok": True}
+
+    def _api_collection_remove(self):
+        user = self._get_current_user()
+        if not user:
+            return {"error": "Neprihlásený"}
+
+        body = self._read_json_body()
+        catalog_id = body.get("catalog_id")
+        if not catalog_id:
+            return {"error": "Chýba catalog_id"}
+
+        conn = db.get_connection()
+        conn.execute(
+            "DELETE FROM collection WHERE user_id = ? AND catalog_id = ?",
+            (user["id"], catalog_id),
+        )
+        conn.commit()
+        conn.close()
+        return {"ok": True}
+
+    def _api_collection_update(self):
+        user = self._get_current_user()
+        if not user:
+            return {"error": "Neprihlásený"}
+
+        body = self._read_json_body()
+        catalog_id = body.get("catalog_id")
+        purchase_price = body.get("purchase_price")
+
+        if not catalog_id:
+            return {"error": "Chýba catalog_id"}
+
+        conn = db.get_connection()
+        conn.execute(
+            "UPDATE collection SET purchase_price = ? WHERE user_id = ? AND catalog_id = ?",
+            (purchase_price, user["id"], catalog_id),
         )
         conn.commit()
         conn.close()

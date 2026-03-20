@@ -99,9 +99,22 @@ def init_db():
             UNIQUE(user_id, bazos_id)
         );
 
+        CREATE TABLE IF NOT EXISTS collection (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            catalog_id INTEGER NOT NULL,
+            purchase_price REAL,
+            added_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (catalog_id) REFERENCES catalog(id),
+            UNIQUE(user_id, catalog_id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id);
         CREATE INDEX IF NOT EXISTS idx_watchlist_catalog ON watchlist(catalog_id);
         CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications_sent(user_id);
+        CREATE INDEX IF NOT EXISTS idx_collection_user ON collection(user_id);
+        CREATE INDEX IF NOT EXISTS idx_collection_catalog ON collection(catalog_id);
     """)
     # Migrate: add image_url column if missing
     cols = [r[1] for r in conn.execute("PRAGMA table_info(catalog)").fetchall()]
