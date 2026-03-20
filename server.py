@@ -130,7 +130,7 @@ class Handler(SimpleHTTPRequestHandler):
         catalog = conn.execute("""
             SELECT c.*,
                 (SELECT COUNT(*) FROM listings l
-                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0 AND l.is_trading = 0) as active_count
+                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0) as active_count
             FROM catalog c
             ORDER BY c.title
         """).fetchall()
@@ -143,7 +143,7 @@ class Handler(SimpleHTTPRequestHandler):
                     SELECT bazos_id, title, price, price_text, date_posted,
                            location, url, views
                     FROM listings
-                    WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0 AND is_trading = 0
+                    WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
                     ORDER BY price ASC
                 """, (d["id"],)).fetchall()
                 d["ads"] = [dict(a) for a in ads]
@@ -368,7 +368,7 @@ class Handler(SimpleHTTPRequestHandler):
             active_prices = conn.execute("""
                 SELECT price FROM listings
                 WHERE catalog_id = ? AND is_active = 1
-                      AND is_buying = 0 AND is_trading = 0
+                      AND is_buying = 0
                       AND price IS NOT NULL
             """, (d["catalog_id"],)).fetchall()
 

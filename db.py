@@ -279,7 +279,7 @@ def record_snapshots(conn):
         SELECT catalog_id, GROUP_CONCAT(price) as prices
         FROM listings
         WHERE catalog_id IS NOT NULL AND price IS NOT NULL
-              AND is_active = 1 AND is_buying = 0 AND is_trading = 0
+              AND is_active = 1 AND is_buying = 0
         GROUP BY catalog_id
     """).fetchall()
 
@@ -351,7 +351,7 @@ def get_price_stats(conn):
             AVG(l.price) as avg_price
         FROM catalog c
         JOIN listings l ON l.catalog_id = c.id
-        WHERE l.price IS NOT NULL AND l.is_buying = 0 AND l.is_trading = 0
+        WHERE l.price IS NOT NULL AND l.is_buying = 0
         GROUP BY c.id
         HAVING listing_count >= 1
         ORDER BY listing_count DESC
