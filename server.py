@@ -130,7 +130,7 @@ class Handler(SimpleHTTPRequestHandler):
         catalog = conn.execute("""
             SELECT c.*,
                 (SELECT COUNT(*) FROM listings l
-                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0) as active_count
+                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0 AND l.is_trading = 0) as active_count
             FROM catalog c
             ORDER BY c.title
         """).fetchall()
@@ -143,7 +143,7 @@ class Handler(SimpleHTTPRequestHandler):
                     SELECT bazos_id, title, price, price_text, date_posted,
                            location, url, views
                     FROM listings
-                    WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
+                    WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0 AND is_trading = 0
                     ORDER BY price ASC
                 """, (d["id"],)).fetchall()
                 d["ads"] = [dict(a) for a in ads]
@@ -167,14 +167,14 @@ class Handler(SimpleHTTPRequestHandler):
         # All listings for this item (active + inactive), newest first
         all_listings = conn.execute("""
             SELECT bazos_id, title, price, price_text, date_posted,
-                   location, url, views, is_active, is_buying, first_seen, last_seen
+                   location, url, views, is_active, is_buying, is_trading, first_seen, last_seen
             FROM listings
             WHERE catalog_id = ?
             ORDER BY date_posted DESC
         """, (item_id,)).fetchall()
         d["all_listings"] = [dict(l) for l in all_listings]
         # Price stats (exclude buy-intent)
-        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"]]
+        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"] and not l["is_trading"]]
         if prices:
             d["price_stats"] = {
                 "count": len(prices),
@@ -212,7 +212,7 @@ class Handler(SimpleHTTPRequestHandler):
         rows = conn.execute("""
             SELECT l.bazos_id, l.title, l.price, l.price_text, l.location,
                    l.url, l.image_url, l.first_seen, l.date_posted, l.views,
-                   l.catalog_id, l.is_active, l.is_buying,
+                   l.catalog_id, l.is_active, l.is_buying, l.is_trading,
                    c.title as catalog_title, c.building, c.artist,
                    c.image_url as catalog_image, c.category
             FROM listings l
@@ -359,14 +359,15 @@ class Handler(SimpleHTTPRequestHandler):
         items = []
         total_value = 0
         total_cost = 0
-        has_cost = False
+        valued_count = 0
 
         for row in rows:
             d = dict(row)
-            # Current value = median of active sell listings
+            # Current value = median of active sell listings (exclude buy+trade)
             active_prices = conn.execute("""
                 SELECT price FROM listings
-                WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
+                WHERE catalog_id = ? AND is_active = 1
+                      AND is_buying = 0 AND is_trading = 0
                       AND price IS NOT NULL
             """, (d["catalog_id"],)).fetchall()
 
@@ -382,19 +383,25 @@ class Handler(SimpleHTTPRequestHandler):
                 """, (d["catalog_id"],)).fetchone()
                 d["current_value"] = snap["median_price"] if snap else None
 
+            # Only count items with known value in summary totals
             if d["current_value"] is not None:
                 total_value += d["current_value"]
-
-            if d["purchase_price"] is not None:
-                total_cost += d["purchase_price"]
-                has_cost = True
+                valued_count += 1
+                if d["purchase_price"] is not None:
+                    total_cost += d["purchase_price"]
 
             items.append(d)
 
         conn.close()
 
+        has_cost = valued_count > 0 and any(
+            i["purchase_price"] is not None and i["current_value"] is not None
+            for i in items
+        )
+
         summary = {
             "count": len(items),
+            "valued_count": valued_count,
             "total_value": round(total_value, 2),
             "total_cost": round(total_cost, 2) if has_cost else None,
             "return": round(total_value - total_cost, 2) if has_cost else None,
@@ -437,6 +444,16 @@ class Handler(SimpleHTTPRequestHandler):
                 "INSERT INTO collection (user_id, catalog_id, purchase_price) VALUES (?, ?, ?)",
                 (user["id"], catalog_id, purchase_price),
             )
+            # Auto-watch: enable notifications when adding to collection
+            watched = conn.execute(
+                "SELECT id FROM watchlist WHERE user_id = ? AND catalog_id = ?",
+                (user["id"], catalog_id),
+            ).fetchone()
+            if not watched:
+                conn.execute(
+                    "INSERT INTO watchlist (user_id, catalog_id) VALUES (?, ?)",
+                    (user["id"], catalog_id),
+                )
         conn.commit()
         conn.close()
         return {"ok": True}

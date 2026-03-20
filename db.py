@@ -49,6 +49,7 @@ def init_db():
             last_seen TEXT DEFAULT (datetime('now')),
             is_active INTEGER DEFAULT 1,
             is_buying INTEGER DEFAULT 0,
+            is_trading INTEGER DEFAULT 0,
             FOREIGN KEY (catalog_id) REFERENCES catalog(id)
         );
 
@@ -137,6 +138,23 @@ def init_db():
                OR LOWER(title) LIKE '%zháňam%'
                OR LOWER(title) LIKE '%zhanam%'
         """)
+    # Migrate: add is_trading column if missing
+    if "is_trading" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN is_trading INTEGER DEFAULT 0")
+        # Backfill existing trade-intent listings
+        conn.execute("""
+            UPDATE listings SET is_trading = 1
+            WHERE LOWER(title) LIKE '%výmena%'
+               OR LOWER(title) LIKE '%vymena%'
+               OR LOWER(title) LIKE '%vymením%'
+               OR LOWER(title) LIKE '%vymenim%'
+               OR LOWER(title) LIKE '%vymeníme%'
+               OR LOWER(title) LIKE '%vymenime%'
+               OR LOWER(title) LIKE '%menujem%'
+               OR LOWER(title) LIKE '%menujeme%'
+               OR LOWER(title) LIKE '%vymieňam%'
+               OR LOWER(title) LIKE '%vymienam%'
+        """)
     conn.commit()
     conn.close()
 
@@ -180,19 +198,20 @@ def upsert_listing(conn, listing):
     ).fetchone()
 
     is_buying = listing.get("is_buying", 0)
+    is_trading = listing.get("is_trading", 0)
 
     if existing:
         conn.execute("""
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
                 views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
-                is_buying=?
+                is_buying=?, is_trading=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
-            listing["views"], listing["catalog_id"], is_buying,
+            listing["views"], listing["catalog_id"], is_buying, is_trading,
             listing["bazos_id"]
         ))
         return existing["id"]
@@ -200,14 +219,14 @@ def upsert_listing(conn, listing):
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
                 date_posted, location, postal_code, url, image_url, views, catalog_id,
-                is_buying)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_buying, is_trading)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
             listing["image_url"], listing["views"], listing["catalog_id"],
-            is_buying
+            is_buying, is_trading
         ))
         return cur.lastrowid
 
@@ -260,7 +279,7 @@ def record_snapshots(conn):
         SELECT catalog_id, GROUP_CONCAT(price) as prices
         FROM listings
         WHERE catalog_id IS NOT NULL AND price IS NOT NULL
-              AND is_active = 1 AND is_buying = 0
+              AND is_active = 1 AND is_buying = 0 AND is_trading = 0
         GROUP BY catalog_id
     """).fetchall()
 
@@ -332,7 +351,7 @@ def get_price_stats(conn):
             AVG(l.price) as avg_price
         FROM catalog c
         JOIN listings l ON l.catalog_id = c.id
-        WHERE l.price IS NOT NULL AND l.is_buying = 0
+        WHERE l.price IS NOT NULL AND l.is_buying = 0 AND l.is_trading = 0
         GROUP BY c.id
         HAVING listing_count >= 1
         ORDER BY listing_count DESC

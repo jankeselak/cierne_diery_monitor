@@ -609,6 +609,7 @@
         .status-active { color: var(--green); }
         .status-inactive { color: var(--text-muted); }
         .status-buying { color: var(--orange); }
+        .status-trading { color: var(--blue); }
 
         /* No ads */
         .no-ads {
@@ -1405,11 +1406,14 @@ function recentItem(l) {
         : '';
 
     const isBuying = !!l.is_buying;
-    const tag = isBuying
-        ? '<span class="recent-tag buying">Dopyt</span>'
-        : isMatched
-            ? '<span class="recent-tag matched">Identifikované</span>'
-            : '<span class="recent-tag unmatched">Neidentifikované</span>';
+    const isTrading = !!l.is_trading;
+    const tag = isTrading
+        ? '<span class="recent-tag" style="color:var(--blue);border-color:var(--blue-dim);">Výmena</span>'
+        : isBuying
+            ? '<span class="recent-tag buying">Dopyt</span>'
+            : isMatched
+                ? '<span class="recent-tag matched">Identifikované</span>'
+                : '<span class="recent-tag unmatched">Neidentifikované</span>';
 
     const priceStr = l.price ? `${l.price.toFixed(0)}\u20AC` : (l.price_text || 'Dohodou');
     const timeAgo = relativeTime(l.first_seen);
@@ -1819,8 +1823,8 @@ function renderDetail(d) {
                         </div>
                         <div class="history-location">${esc(l.location || '')}</div>
                         <div class="history-date">${esc(l.date_posted || '')}</div>
-                        <div class="history-status ${l.is_buying ? 'status-buying' : l.is_active ? 'status-active' : 'status-inactive'}">
-                            ${l.is_buying ? 'Dopyt' : l.is_active ? 'Aktívny' : 'Neaktívny'}
+                        <div class="history-status ${l.is_trading ? 'status-trading' : l.is_buying ? 'status-buying' : l.is_active ? 'status-active' : 'status-inactive'}">
+                            ${l.is_trading ? 'Výmena' : l.is_buying ? 'Dopyt' : l.is_active ? 'Aktívny' : 'Neaktívny'}
                         </div>
                     </div>`).join('')}
             </div>
@@ -2257,6 +2261,8 @@ async function toggleCollection(catalogId) {
             collectionIds.delete(catalogId);
         } else {
             collectionIds.add(catalogId);
+            // Server auto-watches on collect — sync local state
+            watchedIds.add(catalogId);
         }
         // Reload collection data in background
         loadCollection();
