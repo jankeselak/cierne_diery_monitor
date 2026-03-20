@@ -984,6 +984,20 @@
         }
         .collection-price-input:focus { border-color: var(--green); }
         .collection-price-input::placeholder { color: var(--text-muted); }
+        .collection-price-save {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: none;
+            border: 1px solid var(--border);
+            padding: .35em .7em;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .collection-price-save:hover { color: var(--green); border-color: var(--green); }
+        .collection-price-save.saved { color: var(--green); border-color: var(--green); }
         .collection-price-label {
             font-family: var(--font-mono);
             font-size: .6rem;
@@ -2218,8 +2232,10 @@ function renderCollectionPriceRow(d) {
         <span class="collection-price-label">Kúpené za:</span>
         <input type="number" class="collection-price-input" id="col-price-${d.id}"
                placeholder="—" value="${price}"
-               onchange="updateCollectionPrice(${d.id}, this.value ? parseFloat(this.value) : null)">
+               onkeydown="if(event.key==='Enter')saveCollectionPrice(${d.id})">
         <span class="collection-price-label">&euro;</span>
+        <button class="collection-price-save" id="col-save-${d.id}"
+                onclick="saveCollectionPrice(${d.id})">Uložiť</button>
     </div>`;
 }
 
@@ -2275,8 +2291,10 @@ function refreshModalCollection(catalogId) {
                 <span class="collection-price-label">Kúpené za:</span>
                 <input type="number" class="collection-price-input" id="col-price-${catalogId}"
                        placeholder="—" value=""
-                       onchange="updateCollectionPrice(${catalogId}, this.value ? parseFloat(this.value) : null)">
-                <span class="collection-price-label">&euro;</span>`;
+                       onkeydown="if(event.key==='Enter')saveCollectionPrice(${catalogId})">
+                <span class="collection-price-label">&euro;</span>
+                <button class="collection-price-save" id="col-save-${catalogId}"
+                        onclick="saveCollectionPrice(${catalogId})">Uložiť</button>`;
             meta.appendChild(row);
         }
     } else if (!collectionIds.has(catalogId) && existingRow) {
@@ -2284,8 +2302,15 @@ function refreshModalCollection(catalogId) {
     }
 }
 
-async function updateCollectionPrice(catalogId, price) {
+async function saveCollectionPrice(catalogId) {
     if (!currentUser) return;
+    const input = document.getElementById(`col-price-${catalogId}`);
+    const btn = document.getElementById(`col-save-${catalogId}`);
+    if (!input) return;
+    const price = input.value ? parseFloat(input.value) : null;
+
+    btn.disabled = true;
+    btn.textContent = '...';
     try {
         await fetch('/api/collection', {
             method: 'PATCH',
@@ -2297,7 +2322,13 @@ async function updateCollectionPrice(catalogId, price) {
             const item = collectionData.items.find(i => i.catalog_id === catalogId);
             if (item) item.purchase_price = price;
         }
-    } catch {}
+        btn.textContent = 'Uložené';
+        btn.classList.add('saved');
+        setTimeout(() => { btn.textContent = 'Uložiť'; btn.classList.remove('saved'); btn.disabled = false; }, 1500);
+    } catch {
+        btn.textContent = 'Chyba';
+        setTimeout(() => { btn.textContent = 'Uložiť'; btn.disabled = false; }, 1500);
+    }
 }
 
 // ── UTILS ──
