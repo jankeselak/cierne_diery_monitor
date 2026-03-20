@@ -358,8 +358,9 @@ class Handler(SimpleHTTPRequestHandler):
 
         items = []
         total_value = 0
-        total_cost = 0
-        valued_count = 0
+        # For return calculation: only items with BOTH value and purchase price
+        return_value = 0
+        return_cost = 0
 
         for row in rows:
             d = dict(row)
@@ -383,28 +384,24 @@ class Handler(SimpleHTTPRequestHandler):
                 """, (d["catalog_id"],)).fetchone()
                 d["current_value"] = snap["median_price"] if snap else None
 
-            # Only count items with known value in summary totals
             if d["current_value"] is not None:
                 total_value += d["current_value"]
-                valued_count += 1
+                # Only include in return calc if we know both sides
                 if d["purchase_price"] is not None:
-                    total_cost += d["purchase_price"]
+                    return_value += d["current_value"]
+                    return_cost += d["purchase_price"]
 
             items.append(d)
 
         conn.close()
 
-        has_cost = valued_count > 0 and any(
-            i["purchase_price"] is not None and i["current_value"] is not None
-            for i in items
-        )
+        has_return = return_cost > 0 or return_value > 0
 
         summary = {
             "count": len(items),
-            "valued_count": valued_count,
             "total_value": round(total_value, 2),
-            "total_cost": round(total_cost, 2) if has_cost else None,
-            "return": round(total_value - total_cost, 2) if has_cost else None,
+            "total_cost": round(return_cost, 2) if has_return else None,
+            "return": round(return_value - return_cost, 2) if has_return else None,
         }
 
         return {"items": items, "summary": summary}
