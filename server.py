@@ -130,7 +130,8 @@ class Handler(SimpleHTTPRequestHandler):
         catalog = conn.execute("""
             SELECT c.*,
                 (SELECT COUNT(*) FROM listings l
-                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0) as active_count
+                 WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0
+                       AND (l.is_bundle = 0 OR l.is_bundle IS NULL)) as active_count
             FROM catalog c
             ORDER BY c.title
         """).fetchall()
@@ -144,6 +145,7 @@ class Handler(SimpleHTTPRequestHandler):
                            location, url, views
                     FROM listings
                     WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
+                          AND (is_bundle = 0 OR is_bundle IS NULL)
                     ORDER BY price ASC
                 """, (d["id"],)).fetchall()
                 d["ads"] = [dict(a) for a in ads]
@@ -173,22 +175,6 @@ class Handler(SimpleHTTPRequestHandler):
             ORDER BY date_posted DESC
         """, (item_id,)).fetchall()
         d["all_listings"] = [dict(l) for l in all_listings]
-        # Price stats (exclude buy-intent)
-        prices = [l["price"] for l in all_listings if l["price"] and not l["is_buying"] and not l["is_trading"]]
-        if prices:
-            d["price_stats"] = {
-                "count": len(prices),
-                "min": min(prices),
-                "max": max(prices),
-                "median": calc_median(prices),
-                "avg": sum(prices) / len(prices),
-                "prices": sorted(prices),
-            }
-        else:
-            d["price_stats"] = None
-        # Price snapshots over time
-        snapshots = db.get_snapshots(conn, item_id)
-        d["snapshots"] = [dict(s) for s in snapshots]
         conn.close()
         return d
 
@@ -217,6 +203,7 @@ class Handler(SimpleHTTPRequestHandler):
                    c.image_url as catalog_image, c.category
             FROM listings l
             LEFT JOIN catalog c ON l.catalog_id = c.id
+            WHERE (l.is_bundle = 0 OR l.is_bundle IS NULL)
             ORDER BY l.first_seen DESC
             LIMIT ?
         """, (limit,)).fetchall()
@@ -368,7 +355,7 @@ class Handler(SimpleHTTPRequestHandler):
             active_prices = conn.execute("""
                 SELECT price FROM listings
                 WHERE catalog_id = ? AND is_active = 1
-                      AND is_buying = 0
+                      AND is_buying = 0 AND (is_bundle = 0 OR is_bundle IS NULL)
                       AND price IS NOT NULL
             """, (d["catalog_id"],)).fetchall()
 
@@ -376,13 +363,14 @@ class Handler(SimpleHTTPRequestHandler):
                 prices = [r["price"] for r in active_prices]
                 d["current_value"] = calc_median(prices)
             else:
-                # Fallback: last known snapshot median
-                snap = conn.execute("""
-                    SELECT median_price FROM price_snapshots
-                    WHERE catalog_id = ?
-                    ORDER BY scraped_at DESC LIMIT 1
+                # Fallback: last known listing price
+                last = conn.execute("""
+                    SELECT price FROM listings
+                    WHERE catalog_id = ? AND price IS NOT NULL
+                          AND is_buying = 0 AND (is_bundle = 0 OR is_bundle IS NULL)
+                    ORDER BY last_seen DESC LIMIT 1
                 """, (d["catalog_id"],)).fetchone()
-                d["current_value"] = snap["median_price"] if snap else None
+                d["current_value"] = last["price"] if last else None
 
             if d["current_value"] is not None:
                 total_value += d["current_value"]

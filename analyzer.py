@@ -35,6 +35,7 @@ def find_deals(conn):
         FROM listings l
         LEFT JOIN catalog c ON l.catalog_id = c.id
         WHERE l.is_active = 1 AND l.price IS NOT NULL
+              AND (l.is_bundle = 0 OR l.is_bundle IS NULL)
         ORDER BY l.price ASC
     """).fetchall()
 
@@ -51,6 +52,7 @@ def find_deals(conn):
         SELECT l.catalog_id, l.price, l.title, l.description
         FROM listings l
         WHERE l.catalog_id IS NOT NULL AND l.price IS NOT NULL
+              AND (l.is_bundle = 0 OR l.is_bundle IS NULL)
     """).fetchall()
     for row in rows:
         if _is_real_sale(row):

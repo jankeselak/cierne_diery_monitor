@@ -14,6 +14,7 @@ import scraper
 import matcher
 import analyzer
 import notifier
+import bundle
 
 
 def log(msg):
@@ -40,6 +41,30 @@ def cmd_scrape():
     catalog_dicts = [dict(row) for row in catalog_rows]
     listings = matcher.match_all_listings(listings, catalog_dicts)
 
+    # 3b. Detect and expand bundle listings
+    expanded = []
+    bundle_count = 0
+    for listing in listings:
+        if listing.get("is_buying"):
+            expanded.append(listing)
+            continue
+        if bundle.is_bundle(listing["title"], listing.get("description", "")):
+            items = bundle.parse_items(listing.get("description", ""))
+            if len(items) >= 2:
+                bundle_count += 1
+                # Mark parent as bundle, clear its catalog match
+                listing["is_bundle"] = 1
+                listing["catalog_id"] = None
+                listing["price"] = None
+                # Delete old children before re-expanding
+                db.delete_bundle_children(conn, listing["bazos_id"])
+                # Create child listings
+                for i, item in enumerate(items):
+                    child = bundle.make_child(listing, item, i, catalog_dicts)
+                    expanded.append(child)
+        expanded.append(listing)
+    listings = expanded
+
     # 4. Store listings
     active_ids = set()
     new_count = 0
@@ -59,16 +84,12 @@ def cmd_scrape():
     db.mark_inactive(conn, active_ids)
     conn.commit()
 
-    # 5. Record price snapshots
-    db.record_snapshots(conn)
-    conn.commit()
-
-    # 6. Send watchdog notifications for new listings
+    # 5. Send watchdog notifications for new listings
     notifier.send_watchdog_alerts(conn, new_listings)
 
-    matched = sum(1 for l in listings if l["catalog_id"])
+    matched = sum(1 for l in listings if l.get("catalog_id"))
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    log(f"[{now}] {len(listings)} listings ({new_count} new, {matched} matched), {len(archive_items)} catalog items")
+    log(f"[{now}] {len(listings)} listings ({new_count} new, {matched} matched, {bundle_count} bundles), {len(archive_items)} catalog items")
 
     conn.close()
 

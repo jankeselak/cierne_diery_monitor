@@ -57,21 +57,6 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price);
         CREATE INDEX IF NOT EXISTS idx_listings_active ON listings(is_active);
 
-        CREATE TABLE IF NOT EXISTS price_snapshots (
-            id INTEGER PRIMARY KEY,
-            catalog_id INTEGER NOT NULL,
-            scraped_at TEXT NOT NULL,
-            min_price REAL,
-            max_price REAL,
-            avg_price REAL,
-            median_price REAL,
-            listing_count INTEGER,
-            FOREIGN KEY (catalog_id) REFERENCES catalog(id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_snapshots_catalog ON price_snapshots(catalog_id);
-        CREATE INDEX IF NOT EXISTS idx_snapshots_date ON price_snapshots(scraped_at);
-
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -155,6 +140,12 @@ def init_db():
                OR LOWER(title) LIKE '%vymieňam%'
                OR LOWER(title) LIKE '%vymienam%'
         """)
+    # Migrate: add bundle columns if missing
+    if "is_bundle" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN is_bundle INTEGER DEFAULT 0")
+    if "parent_bazos_id" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN parent_bazos_id TEXT DEFAULT NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_parent ON listings(parent_bazos_id)")
     conn.commit()
     conn.close()
 
@@ -199,19 +190,22 @@ def upsert_listing(conn, listing):
 
     is_buying = listing.get("is_buying", 0)
     is_trading = listing.get("is_trading", 0)
+    is_bundle = listing.get("is_bundle", 0)
+    parent_bazos_id = listing.get("parent_bazos_id")
 
     if existing:
         conn.execute("""
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
                 views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
-                is_buying=?, is_trading=?
+                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
             listing["views"], listing["catalog_id"], is_buying, is_trading,
+            is_bundle, parent_bazos_id,
             listing["bazos_id"]
         ))
         return existing["id"]
@@ -219,16 +213,24 @@ def upsert_listing(conn, listing):
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
                 date_posted, location, postal_code, url, image_url, views, catalog_id,
-                is_buying, is_trading)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_buying, is_trading, is_bundle, parent_bazos_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
             listing["image_url"], listing["views"], listing["catalog_id"],
-            is_buying, is_trading
+            is_buying, is_trading, is_bundle, parent_bazos_id
         ))
         return cur.lastrowid
+
+
+def delete_bundle_children(conn, parent_bazos_id):
+    """Delete all child listings for a bundle parent (before re-expanding)."""
+    conn.execute(
+        "DELETE FROM listings WHERE parent_bazos_id = ?",
+        (parent_bazos_id,)
+    )
 
 
 def mark_inactive(conn, active_bazos_ids):
@@ -247,7 +249,7 @@ def get_catalog(conn):
 
 
 def get_listings(conn, active_only=True):
-    where = "WHERE is_active = 1" if active_only else ""
+    where = "WHERE (is_bundle = 0 OR is_bundle IS NULL)" + (" AND is_active = 1" if active_only else "")
     return conn.execute(f"""
         SELECT l.*, c.title as catalog_title, c.building, c.artist, c.category
         FROM listings l
@@ -264,80 +266,6 @@ def get_price_history(conn, catalog_id):
         FROM listings
         WHERE catalog_id = ? AND price IS NOT NULL
         ORDER BY date_posted DESC
-    """, (catalog_id,)).fetchall()
-
-
-def record_snapshots(conn):
-    """Record current market price ranges per catalog item. Call after each scrape."""
-    from statistics import median as calc_median
-    from datetime import datetime
-
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    # Get active listing prices grouped by catalog item (exclude buy-intent)
-    rows = conn.execute("""
-        SELECT catalog_id, GROUP_CONCAT(price) as prices
-        FROM listings
-        WHERE catalog_id IS NOT NULL AND price IS NOT NULL
-              AND is_active = 1 AND is_buying = 0
-        GROUP BY catalog_id
-    """).fetchall()
-
-    for row in rows:
-        prices = [float(p) for p in row["prices"].split(",")]
-        conn.execute("""
-            INSERT INTO price_snapshots
-                (catalog_id, scraped_at, min_price, max_price, avg_price,
-                 median_price, listing_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            row["catalog_id"], now, min(prices), max(prices),
-            sum(prices) / len(prices), calc_median(prices), len(prices)
-        ))
-
-
-def get_snapshots(conn, catalog_id):
-    """Get aggregated price snapshots for a catalog item.
-
-    Adaptive granularity: daily (<14d), weekly (14-90d), monthly (>90d).
-    """
-    # Determine date range
-    bounds = conn.execute("""
-        SELECT MIN(scraped_at) as first, MAX(scraped_at) as last
-        FROM price_snapshots WHERE catalog_id = ?
-    """, (catalog_id,)).fetchone()
-
-    if not bounds or not bounds["first"]:
-        return []
-
-    from datetime import datetime
-    first = datetime.strptime(bounds["first"][:10], "%Y-%m-%d")
-    last = datetime.strptime(bounds["last"][:10], "%Y-%m-%d")
-    span_days = (last - first).days
-
-    # Choose grouping
-    if span_days < 14:
-        # Daily: group by date
-        group_expr = "DATE(scraped_at)"
-    elif span_days < 90:
-        # Weekly: group by year + week number
-        group_expr = "strftime('%Y-%W', scraped_at)"
-    else:
-        # Monthly: group by year-month
-        group_expr = "strftime('%Y-%m', scraped_at)"
-
-    return conn.execute(f"""
-        SELECT {group_expr} as period,
-               MIN(scraped_at) as scraped_at,
-               MIN(min_price) as min_price,
-               MAX(max_price) as max_price,
-               AVG(avg_price) as avg_price,
-               AVG(median_price) as median_price,
-               MAX(listing_count) as listing_count
-        FROM price_snapshots
-        WHERE catalog_id = ?
-        GROUP BY {group_expr}
-        ORDER BY period ASC
     """, (catalog_id,)).fetchall()
 
 
