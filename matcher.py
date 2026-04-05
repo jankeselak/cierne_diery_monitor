@@ -6,11 +6,11 @@ def normalize(text):
     """Normalize text for matching: lowercase, strip diacritics, remove noise."""
     text = text.lower().strip()
     # Remove common prefixes
-    for prefix in ["čierne diery", "cierne diery", "čierne diéry", "cd"]:
+    for prefix in ["čierne diery", "cierne diery", "čierne diéry", "čd", "cd"]:
         if text.startswith(prefix):
             text = text[len(prefix):].strip(" -–—:").strip()
     # Remove common suffixes
-    for suffix in ["grafika", "risografika", "risografia", "čierne diery", "cierne diery"]:
+    for suffix in ["grafiky", "grafika", "risografiky", "risografika", "risografie", "risografia", "čierne diery", "cierne diery"]:
         if text.endswith(suffix):
             text = text[:-len(suffix)].strip(" -–—:").strip()
     # Strip diacritics
@@ -66,6 +66,24 @@ def match_listing_to_catalog(listing_title, listing_description, catalog_items):
         # Strategy 2: Exact building name in normalized description
         if building_norm and building_norm in desc_norm:
             score = 0.85
+            if best_score < score:
+                best_match = item["id"]
+                best_score = score
+            continue
+
+        # Strategy 2b: Abbreviated name — listing name is inside building name
+        # Handles "Observatórium" matching "Observatórium Skalnaté pleso"
+        if listing_norm and len(listing_norm) >= 5 and listing_norm in building_norm:
+            score = 0.75
+            if best_score < score:
+                best_match = item["id"]
+                best_score = score
+            continue
+
+        # Strategy 2c: Short exact word match — listing is a single word
+        # that appears as a whole word in the building name (e.g. "ROH")
+        if listing_norm and 3 <= len(listing_norm) < 5 and listing_norm in building_words:
+            score = 0.70
             if best_score < score:
                 best_match = item["id"]
                 best_score = score

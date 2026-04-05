@@ -30,7 +30,8 @@ _FILLER_PATTERNS = re.compile(
     r'|cena\s+je\s+za\s+vsetky|len\s+osobn|poštovn|predám\s+nasledov'
     r'|predám\s+nerozbal|rozhodol\s+som|ponúkam\s+na|predám\s+nasleduj'
     r'|risografie\s*cierne|grafiky\s*cierne|cierne\s*diery'
-    r'|vsetky\s+su\s+v\s+povodnom|^\s*\.+\s*$',
+    r'|vsetky\s+su\s+v\s+povodnom|^\s*\.+\s*$'
+    r'|ponúkam\s+grafik|ponukam\s+grafik',
     re.IGNORECASE,
 )
 
@@ -133,6 +134,9 @@ def _extract_candidate_lines(description):
         if _SOLD_PATTERN.search(line):
             continue
         if len(line) < 5:
+            continue
+        # Skip section headers ("Čierne diery:", "Iné grafiky:", etc.)
+        if re.match(r'^[\w\s]+:\s*$', line):
             continue
         # Skip per-piece price lines
         if _PRICE_PER_PIECE.search(line):
