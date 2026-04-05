@@ -18,8 +18,9 @@ jobs:
             cd /opt/ciernediery
             git pull origin main
 
-            # Ensure dependencies are installed
-            pip3 install -q -r requirements.txt
+            # Ensure venv and dependencies
+            python3 -m venv venv
+            venv/bin/pip install -q -r requirements.txt
 
             # Install/update systemd units
             cp deploy/ciernediery.service /etc/systemd/system/
@@ -36,7 +37,7 @@ jobs:
             systemctl start ciernediery-scraper.timer
 
             # Run initial scrape if DB is empty
-            python3 -c "
+            venv/bin/python -c "
             import db
             conn = db.get_connection()
             db.init_db()
@@ -44,4 +45,4 @@ jobs:
             conn.close()
             print(f'Catalog has {count} items')
             exit(0 if count > 0 else 1)
-            " || python3 main.py scrape
+            " || venv/bin/python main.py scrape
