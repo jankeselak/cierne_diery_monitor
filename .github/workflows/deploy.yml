@@ -17,4 +17,31 @@ jobs:
           script: |
             cd /opt/ciernediery
             git pull origin main
+
+            # Ensure dependencies are installed
+            pip3 install -q -r requirements.txt
+
+            # Install/update systemd units
+            cp deploy/ciernediery.service /etc/systemd/system/
+            cp deploy/ciernediery-scraper.service /etc/systemd/system/
+            cp deploy/ciernediery-scraper.timer /etc/systemd/system/
+            systemctl daemon-reload
+
+            # Restart web server
+            systemctl enable ciernediery
             systemctl restart ciernediery
+
+            # Enable and start scraper timer
+            systemctl enable ciernediery-scraper.timer
+            systemctl start ciernediery-scraper.timer
+
+            # Run initial scrape if DB is empty
+            python3 -c "
+            import db
+            conn = db.get_connection()
+            db.init_db()
+            count = conn.execute('SELECT COUNT(*) FROM catalog').fetchone()[0]
+            conn.close()
+            print(f'Catalog has {count} items')
+            exit(0 if count > 0 else 1)
+            " || python3 main.py scrape

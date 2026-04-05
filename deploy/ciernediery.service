@@ -1,0 +1,15 @@
+[Unit]
+Description=Čierne diery web server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ciernediery
+ExecStart=/usr/bin/python3 server.py
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=-/opt/ciernediery/.env
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

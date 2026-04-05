@@ -1,0 +1,11 @@
+[Unit]
+Description=Čierne diery scraper (one-shot)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ciernediery
+ExecStart=/usr/bin/python3 main.py scrape
+EnvironmentFile=-/opt/ciernediery/.env
+Environment=PYTHONUNBUFFERED=1
+TimeoutStartSec=300
