@@ -1369,7 +1369,7 @@ function recentItem(l) {
     const tag = mainTag + tradeBadge;
 
     const priceStr = l.price ? `${l.price.toFixed(0)}\u20AC` : (l.price_text || 'Dohodou');
-    const timeAgo = relativeTime(l.first_seen);
+    const timeAgo = relativeTime(slovakDateToISO(l.date_posted) || l.first_seen);
 
     return `
     <div class="recent-item">
@@ -1393,6 +1393,13 @@ function scrollRecent(dir) {
     const feed = document.getElementById('recent-feed');
     const scrollAmount = 600;
     feed.scrollBy({ left: dir * scrollAmount, behavior: 'smooth' });
+}
+
+function slovakDateToISO(s) {
+    if (!s) return null;
+    const m = s.match(/(\d+)\.(\d+)\.\s*(\d+)/);
+    if (!m) return null;
+    return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}T12:00:00`;
 }
 
 function relativeTime(dateStr) {
