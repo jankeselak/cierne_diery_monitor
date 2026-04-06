@@ -56,12 +56,14 @@ def cmd_scrape():
                 listing["is_bundle"] = 1
                 listing["catalog_id"] = None
                 listing["price"] = None
-                # Delete old children before re-expanding
-                db.delete_bundle_children(conn, listing["bazos_id"])
-                # Create child listings
+                # Create/update child listings (upsert preserves first_seen)
+                child_ids = set()
                 for i, item in enumerate(items):
                     child = bundle.make_child(listing, item, i, catalog_dicts)
                     expanded.append(child)
+                    child_ids.add(child["bazos_id"])
+                # Remove stale children (items removed from bundle)
+                db.delete_stale_bundle_children(conn, listing["bazos_id"], child_ids)
         expanded.append(listing)
     listings = expanded
 

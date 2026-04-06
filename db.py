@@ -225,11 +225,18 @@ def upsert_listing(conn, listing):
         return cur.lastrowid
 
 
-def delete_bundle_children(conn, parent_bazos_id):
-    """Delete all child listings for a bundle parent (before re-expanding)."""
+def delete_stale_bundle_children(conn, parent_bazos_id, current_child_ids):
+    """Delete bundle children that no longer exist (items removed from listing)."""
+    if not current_child_ids:
+        conn.execute(
+            "DELETE FROM listings WHERE parent_bazos_id = ?",
+            (parent_bazos_id,)
+        )
+        return
+    placeholders = ",".join("?" * len(current_child_ids))
     conn.execute(
-        "DELETE FROM listings WHERE parent_bazos_id = ?",
-        (parent_bazos_id,)
+        f"DELETE FROM listings WHERE parent_bazos_id = ? AND bazos_id NOT IN ({placeholders})",
+        [parent_bazos_id] + list(current_child_ids)
     )
 
 
