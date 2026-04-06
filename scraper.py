@@ -13,15 +13,15 @@ TRADE_INTENT_KEYWORDS = [
     "menujem", "menujeme", "vymieňam", "vymienam",
 ]
 
-def is_buy_intent(title):
-    """Check if a listing title indicates buying intent."""
-    t = title.lower()
-    return any(kw in t for kw in BUY_INTENT_KEYWORDS)
+def is_buy_intent(title, description=""):
+    """Check if a listing indicates buying intent."""
+    text = (title + " " + description).lower()
+    return any(kw in text for kw in BUY_INTENT_KEYWORDS)
 
-def is_trade_intent(title):
-    """Check if a listing title indicates trade intent."""
-    t = title.lower()
-    return any(kw in t for kw in TRADE_INTENT_KEYWORDS)
+def is_trade_intent(title, description=""):
+    """Check if a listing indicates trade intent."""
+    text = (title + " " + description).lower()
+    return any(kw in text for kw in TRADE_INTENT_KEYWORDS)
 
 
 BASE_URL = "https://ostatne.bazos.sk"
@@ -117,8 +117,8 @@ def parse_bazos_page(html):
         listing["image_url"] = img["src"] if img else None
 
         listing["catalog_id"] = None  # Will be matched later
-        listing["is_buying"] = 1 if is_buy_intent(listing["title"]) else 0
-        listing["is_trading"] = 1 if is_trade_intent(listing["title"]) else 0
+        listing["is_buying"] = 1 if is_buy_intent(listing["title"], listing["description"]) else 0
+        listing["is_trading"] = 1 if is_trade_intent(listing["title"], listing["description"]) else 0
         listings.append(listing)
 
     return listings
