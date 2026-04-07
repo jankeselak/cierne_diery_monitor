@@ -13,7 +13,16 @@ import analyzer
 import auth
 
 STATIC_DIR = Path(__file__).parent / "static"
+THUMB_DIR = STATIC_DIR / "img"
 PORT = 8080
+
+
+def _add_thumb_url(d):
+    """Add thumb_url to a catalog dict if thumbnail exists."""
+    slug = d.get("archive_slug")
+    if slug and (THUMB_DIR / f"{slug}.jpg").exists():
+        d["thumb_url"] = f"/img/{slug}.jpg"
+    return d
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -135,10 +144,10 @@ class Handler(SimpleHTTPRequestHandler):
             FROM catalog c
             ORDER BY c.title
         """).fetchall()
-        # Attach active listings per catalog item
+        # Attach active listings and thumb URL per catalog item
         result = []
         for item in catalog:
-            d = dict(item)
+            d = _add_thumb_url(dict(item))
             if d["active_count"] > 0:
                 ads = conn.execute("""
                     SELECT bazos_id, title, price, price_text, date_posted,
@@ -165,7 +174,7 @@ class Handler(SimpleHTTPRequestHandler):
         if not item:
             conn.close()
             return {"error": "Not found"}
-        d = dict(item)
+        d = _add_thumb_url(dict(item))
         # All listings for this item (active + inactive), newest first
         all_listings = conn.execute("""
             SELECT bazos_id, title, price, price_text, date_posted,
@@ -200,7 +209,7 @@ class Handler(SimpleHTTPRequestHandler):
                    l.url, l.image_url, l.first_seen, l.date_posted, l.views,
                    l.catalog_id, l.is_active, l.is_buying, l.is_trading,
                    c.title as catalog_title, c.building, c.artist,
-                   c.image_url as catalog_image, c.category
+                   c.image_url as catalog_image, c.archive_slug, c.category
             FROM listings l
             LEFT JOIN catalog c ON l.catalog_id = c.id
             WHERE (l.is_bundle = 0 OR l.is_bundle IS NULL)
@@ -208,7 +217,14 @@ class Handler(SimpleHTTPRequestHandler):
             LIMIT ?
         """, (limit,)).fetchall()
         conn.close()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            slug = d.pop("archive_slug", None)
+            if slug and (THUMB_DIR / f"{slug}.jpg").exists():
+                d["catalog_thumb"] = f"/img/{slug}.jpg"
+            result.append(d)
+        return result
 
     # ── AUTH ──
 
@@ -335,8 +351,8 @@ class Handler(SimpleHTTPRequestHandler):
         conn = db.get_connection()
         rows = conn.execute("""
             SELECT col.id, col.catalog_id, col.purchase_price, col.added_at,
-                   c.title, c.building, c.artist, c.image_url, c.category,
-                   c.location, c.archive_url
+                   c.title, c.building, c.artist, c.image_url, c.archive_slug,
+                   c.category, c.location, c.archive_url
             FROM collection col
             JOIN catalog c ON col.catalog_id = c.id
             WHERE col.user_id = ?
@@ -350,7 +366,7 @@ class Handler(SimpleHTTPRequestHandler):
         return_cost = 0
 
         for row in rows:
-            d = dict(row)
+            d = _add_thumb_url(dict(row))
             # Current value = median of active sell listings (exclude buy+trade)
             active_prices = conn.execute("""
                 SELECT price FROM listings

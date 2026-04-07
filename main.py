@@ -15,6 +15,7 @@ import matcher
 import analyzer
 import notifier
 import bundle
+import thumbs
 
 
 def log(msg):
@@ -32,6 +33,9 @@ def cmd_scrape():
     for item in archive_items:
         db.upsert_catalog_item(conn, item)
     conn.commit()
+
+    # 1b. Generate thumbnails for catalog images
+    thumbs.ensure_thumbnails(archive_items)
 
     # 2. Scrape bazos listings
     listings = scraper.scrape_bazos()

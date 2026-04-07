@@ -1352,8 +1352,9 @@ function renderRecent() {
 
 function recentItem(l) {
     const isMatched = !!l.catalog_id;
-    const thumbImg = (isMatched && l.catalog_image)
-        ? `<img src="${esc(l.catalog_image)}" alt="" loading="lazy">`
+    const thumbSrc = l.catalog_thumb || l.catalog_image;
+    const thumbImg = (isMatched && thumbSrc)
+        ? `<img src="${esc(thumbSrc)}" alt="" loading="lazy">`
         : (l.image_url ? `<img src="${esc(l.image_url)}" alt="" loading="lazy">` : '<div class="recent-thumb-empty">?</div>');
 
     const catalogLabel = isMatched
@@ -1522,7 +1523,7 @@ function catalogCard(c) {
     <div class="catalog-card ${hasAds ? 'has-ads' : ''}"
          onclick="openDetail(${c.id})" style="cursor:pointer">
         <div class="catalog-img-wrap">
-            ${c.image_url ? `<img src="${esc(c.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
+            ${(c.thumb_url || c.image_url) ? `<img src="${esc(c.thumb_url || c.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
             ${hasAds ? `<span class="catalog-ads-badge">${c.active_count} inzerát${c.active_count > 1 ? 'y' : ''}</span>` : ''}
         </div>
         <div class="catalog-info">
@@ -1676,7 +1677,7 @@ function portfolioCard(item) {
     return `
     <div class="portfolio-card" onclick="openDetail(${item.catalog_id})">
         <div class="portfolio-card-img">
-            ${item.image_url ? `<img src="${esc(item.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
+            ${(item.thumb_url || item.image_url) ? `<img src="${esc(item.thumb_url || item.image_url)}" alt="${esc(building)}" loading="lazy">` : ''}
         </div>
         <div class="portfolio-card-info">
             <div class="portfolio-card-building">${esc(building)}</div>
