@@ -93,12 +93,16 @@ class Handler(SimpleHTTPRequestHandler):
             ("POST", "/api/collection"): self._api_collection_add,
             ("DELETE", "/api/collection"): self._api_collection_remove,
             ("PATCH", "/api/collection"): self._api_collection_update,
+            ("GET", "/api/admin/review"): self._api_review_get,
+            ("POST", "/api/admin/review"): self._api_review_decide,
         }
         handler = routes.get((method, path))
         if handler:
             try:
                 data = handler()
                 self._json_response(data)
+            except PermissionError as e:
+                self._json_response({"error": str(e)}, status=403)
             except Exception as e:
                 self._json_response({"error": str(e)}, status=500)
         else:
@@ -261,7 +265,39 @@ class Handler(SimpleHTTPRequestHandler):
         user = self._get_current_user()
         if not user:
             return {"error": "Neprihlásený", "authenticated": False}
-        return {"authenticated": True, "email": user["email"]}
+        return {"authenticated": True, "email": user["email"], "is_admin": auth.is_admin(user)}
+
+    # ── MATCH REVIEW (admin) ──
+
+    def _require_admin(self):
+        user = self._get_current_user()
+        if not auth.is_admin(user):
+            raise PermissionError("Len pre administrátorov")
+        return user
+
+    def _api_review_get(self):
+        self._require_admin()
+        conn = db.get_connection()
+        rows = db.get_review_queue(conn)
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def _api_review_decide(self):
+        user = self._require_admin()
+        body = self._read_json_body()
+        ad_group_id = body.get("ad_group_id")
+        status = body.get("status")
+        catalog_id = body.get("catalog_id")
+        if not ad_group_id or status not in ("matched", "lot", "not_cd"):
+            return {"error": "Neplatné rozhodnutie"}
+        conn = db.get_connection()
+        if status == "matched" and not conn.execute(
+                "SELECT 1 FROM catalog WHERE id = ?", (catalog_id,)).fetchone():
+            conn.close()
+            return {"error": "Neznáma grafika"}
+        db.set_override(conn, ad_group_id, status, catalog_id, user["id"])
+        conn.close()
+        return {"ok": True}
 
     # ── WATCHLIST ──
 

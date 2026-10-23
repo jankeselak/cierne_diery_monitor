@@ -1,11 +1,18 @@
 """Magic link authentication."""
 
+import os
 import secrets
 from datetime import datetime, timedelta
 
 import db
 
 TOKEN_EXPIRY_DAYS = 30
+
+
+def is_admin(user):
+    """Admins (comma-separated ADMIN_EMAILS env var) can review matches."""
+    admins = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
+    return bool(user) and user["email"].lower() in admins
 
 
 def generate_token():
