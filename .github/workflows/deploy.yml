@@ -15,8 +15,10 @@ jobs:
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            # Stop at the first failing command so a broken deploy fails the job
+            set -e
             cd /opt/ciernediery
-            git pull origin main
+            git pull --ff-only origin main
 
             # Ensure venv and dependencies
             python3 -m venv venv
