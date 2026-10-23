@@ -17,6 +17,7 @@ import matcher
 import analyzer
 import notifier
 import bundle
+import reposts
 import thumbs
 
 
@@ -72,15 +73,23 @@ def cmd_scrape():
     # 4. Store listings
     active_ids = set()
     new_count = 0
+    repost_count = 0
     new_listings = []
+    known_groups = {row[0] for row in conn.execute("SELECT DISTINCT ad_group_id FROM listings")}
     for listing in listings:
         existing = conn.execute(
             "SELECT id FROM listings WHERE bazos_id = ?",
             (listing["bazos_id"],)
         ).fetchone()
         if not existing:
-            new_count += 1
-            new_listings.append(listing)
+            # A repost of a known ad is not new: no "new" count, no alert
+            group = reposts.ad_group_id(listing)
+            if group in known_groups:
+                repost_count += 1
+            else:
+                new_count += 1
+                new_listings.append(listing)
+                known_groups.add(group)
         db.upsert_listing(conn, listing)
         active_ids.add(listing["bazos_id"])
 
@@ -93,7 +102,7 @@ def cmd_scrape():
 
     matched = sum(1 for l in listings if l.get("catalog_id"))
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    log(f"[{now}] {len(listings)} listings ({new_count} new, {matched} matched, {bundle_count} bundles), {len(archive_items)} catalog items")
+    log(f"[{now}] {len(listings)} listings ({new_count} new, {repost_count} reposts, {matched} matched, {bundle_count} bundles), {len(archive_items)} catalog items")
 
     conn.close()
 

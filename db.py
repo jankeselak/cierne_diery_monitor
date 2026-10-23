@@ -2,6 +2,8 @@ import sqlite3
 import os
 from pathlib import Path
 
+import reposts
+
 DB_DIR = Path(__file__).parent / "data"
 DB_PATH = DB_DIR / "listings.db"
 
@@ -146,6 +148,27 @@ def init_db():
     if "parent_bazos_id" not in listing_cols:
         conn.execute("ALTER TABLE listings ADD COLUMN parent_bazos_id TEXT DEFAULT NULL")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_parent ON listings(parent_bazos_id)")
+    # Migrate: group reposts of the same ad. Recomputed for all rows (cheap) so
+    # changes to the grouping rule apply to existing data too.
+    if "ad_group_id" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN ad_group_id TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_group ON listings(ad_group_id)")
+    rows = conn.execute("SELECT * FROM listings").fetchall()
+    conn.executemany(
+        "UPDATE listings SET ad_group_id = ? WHERE id = ? AND ad_group_id IS NOT ?",
+        [(group, row["id"], group) for row in rows for group in [reposts.ad_group_id(dict(row))]],
+    )
+    # One row per ad: the latest repost, plus when the ad was first seen
+    conn.executescript("""
+        DROP VIEW IF EXISTS ads;
+        CREATE VIEW ads AS
+            SELECT l.*, g.group_first_seen, g.repost_count
+            FROM listings l
+            JOIN (SELECT ad_group_id, MAX(id) AS latest_id,
+                         MIN(first_seen) AS group_first_seen, COUNT(*) AS repost_count
+                  FROM listings GROUP BY ad_group_id) g
+              ON l.id = g.latest_id;
+    """)
     conn.commit()
     conn.close()
 
@@ -192,20 +215,21 @@ def upsert_listing(conn, listing):
     is_trading = listing.get("is_trading", 0)
     is_bundle = listing.get("is_bundle", 0)
     parent_bazos_id = listing.get("parent_bazos_id")
+    ad_group_id = reposts.ad_group_id(listing)
 
     if existing:
         conn.execute("""
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
                 views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
-                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?
+                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?, ad_group_id=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
             listing["views"], listing["catalog_id"], is_buying, is_trading,
-            is_bundle, parent_bazos_id,
+            is_bundle, parent_bazos_id, ad_group_id,
             listing["bazos_id"]
         ))
         return existing["id"]
@@ -213,14 +237,14 @@ def upsert_listing(conn, listing):
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
                 date_posted, location, postal_code, url, image_url, views, catalog_id,
-                is_buying, is_trading, is_bundle, parent_bazos_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
             listing["image_url"], listing["views"], listing["catalog_id"],
-            is_buying, is_trading, is_bundle, parent_bazos_id
+            is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id
         ))
         return cur.lastrowid
 
@@ -259,7 +283,7 @@ def get_listings(conn, active_only=True):
     where = "WHERE (is_bundle = 0 OR is_bundle IS NULL)" + (" AND is_active = 1" if active_only else "")
     return conn.execute(f"""
         SELECT l.*, c.title as catalog_title, c.building, c.artist, c.category
-        FROM listings l
+        FROM ads l
         LEFT JOIN catalog c ON l.catalog_id = c.id
         {where}
         ORDER BY l.date_posted DESC
@@ -270,7 +294,7 @@ def get_price_history(conn, catalog_id):
     """Get all listing prices for a catalog item."""
     return conn.execute("""
         SELECT price, date_posted, is_active, url
-        FROM listings
+        FROM ads
         WHERE catalog_id = ? AND price IS NOT NULL
         ORDER BY date_posted DESC
     """, (catalog_id,)).fetchall()
@@ -285,7 +309,7 @@ def get_price_stats(conn):
             MAX(l.price) as max_price,
             AVG(l.price) as avg_price
         FROM catalog c
-        JOIN listings l ON l.catalog_id = c.id
+        JOIN ads l ON l.catalog_id = c.id
         WHERE l.price IS NOT NULL AND l.is_buying = 0
         GROUP BY c.id
         HAVING listing_count >= 1

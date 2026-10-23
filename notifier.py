@@ -3,6 +3,8 @@
 import os
 import resend
 
+import reposts
+
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "Čierne Diery <ciernediery@resend.dev>")
 
@@ -138,11 +140,12 @@ def send_watchdog_alerts(conn, new_listings):
                 if listing["price"] > watcher["max_price"]:
                     continue
 
-            # Check if already notified
-            already = conn.execute(
-                "SELECT id FROM notifications_sent WHERE user_id = ? AND bazos_id = ?",
-                (watcher["user_id"], listing["bazos_id"]),
-            ).fetchone()
+            # Check if already notified about this ad (any repost of it)
+            already = conn.execute("""
+                SELECT n.id FROM notifications_sent n
+                JOIN listings l ON l.bazos_id = n.bazos_id
+                WHERE n.user_id = ? AND l.ad_group_id = ?
+            """, (watcher["user_id"], reposts.ad_group_id(listing))).fetchone()
             if already:
                 continue
 
