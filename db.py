@@ -98,6 +98,17 @@ def init_db():
             UNIQUE(user_id, catalog_id)
         );
 
+        -- Manual match decisions per ad group; the matcher never overrides them
+        CREATE TABLE IF NOT EXISTS match_overrides (
+            ad_group_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK (status IN ('matched', 'lot', 'not_cd')),
+            catalog_id INTEGER,
+            user_id INTEGER,
+            decided_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (catalog_id) REFERENCES catalog(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id);
         CREATE INDEX IF NOT EXISTS idx_watchlist_catalog ON watchlist(catalog_id);
         CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications_sent(user_id);
@@ -148,6 +159,9 @@ def init_db():
     if "parent_bazos_id" not in listing_cols:
         conn.execute("ALTER TABLE listings ADD COLUMN parent_bazos_id TEXT DEFAULT NULL")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_parent ON listings(parent_bazos_id)")
+    # Migrate: matcher confidence per listing (1.0 = manual decision)
+    if "match_confidence" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN match_confidence REAL")
     # Migrate: group reposts of the same ad. Recomputed for all rows (cheap) so
     # changes to the grouping rule apply to existing data too.
     if "ad_group_id" not in listing_cols:
@@ -222,14 +236,15 @@ def upsert_listing(conn, listing):
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
                 views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
-                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?, ad_group_id=?
+                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?, ad_group_id=?,
+                match_confidence=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
             listing["views"], listing["catalog_id"], is_buying, is_trading,
-            is_bundle, parent_bazos_id, ad_group_id,
+            is_bundle, parent_bazos_id, ad_group_id, listing.get("match_confidence"),
             listing["bazos_id"]
         ))
         return existing["id"]
@@ -237,14 +252,16 @@ def upsert_listing(conn, listing):
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
                 date_posted, location, postal_code, url, image_url, views, catalog_id,
-                is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id,
+                match_confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
             listing["image_url"], listing["views"], listing["catalog_id"],
-            is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id
+            is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id,
+            listing.get("match_confidence")
         ))
         return cur.lastrowid
 
@@ -316,3 +333,56 @@ def get_price_stats(conn):
         ORDER BY listing_count DESC
     """).fetchall()
     return rows
+
+
+# Matches below this confidence are shown in the review queue
+REVIEW_CONFIDENCE = 0.85
+
+
+def get_overrides(conn):
+    """Manual match decisions by ad group."""
+    return {row["ad_group_id"]: dict(row) for row in conn.execute("SELECT * FROM match_overrides")}
+
+
+def apply_overrides(listings, overrides):
+    """Replace matcher results with manual decisions (in place)."""
+    for listing in listings:
+        override = overrides.get(reposts.ad_group_id(listing))
+        if override:
+            listing["catalog_id"] = override["catalog_id"] if override["status"] == "matched" else None
+            listing["match_confidence"] = 1.0
+
+
+def set_override(conn, ad_group_id, status, catalog_id=None, user_id=None):
+    """Save a manual decision and apply it to every listing of the ad group."""
+    catalog_id = catalog_id if status == "matched" else None
+    conn.execute("""
+        INSERT INTO match_overrides (ad_group_id, status, catalog_id, user_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(ad_group_id) DO UPDATE SET status = excluded.status,
+            catalog_id = excluded.catalog_id, user_id = excluded.user_id,
+            decided_at = datetime('now')
+    """, (ad_group_id, status, catalog_id, user_id))
+    conn.execute(
+        "UPDATE listings SET catalog_id = ?, match_confidence = 1.0 WHERE ad_group_id = ?",
+        (catalog_id, ad_group_id),
+    )
+    conn.commit()
+
+
+def get_review_queue(conn):
+    """Active ads that are unmatched or low-confidence and not reviewed yet, newest first."""
+    return conn.execute("""
+        SELECT a.ad_group_id, a.bazos_id, a.title, a.description, a.price, a.price_text,
+               a.url, a.image_url, a.location, a.date_posted, a.is_buying, a.is_trading,
+               a.catalog_id, a.match_confidence, a.repost_count,
+               c.title AS guess_title, c.archive_slug AS guess_slug
+        FROM ads a
+        LEFT JOIN catalog c ON c.id = a.catalog_id
+        WHERE a.is_active = 1
+          AND a.parent_bazos_id IS NULL
+          AND (a.is_bundle = 0 OR a.is_bundle IS NULL)
+          AND a.ad_group_id NOT IN (SELECT ad_group_id FROM match_overrides)
+          AND (a.catalog_id IS NULL OR COALESCE(a.match_confidence, 0) < ?)
+        ORDER BY a.group_first_seen DESC
+    """, (REVIEW_CONFIDENCE,)).fetchall()

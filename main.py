@@ -7,6 +7,8 @@ Usage:
     python main.py stats        Show price statistics per print
     python main.py list         List all active listings
     python main.py eval [file]  Measure matching accuracy against tests/match_labels.csv (or file)
+    python main.py export-labels [file]
+                                Write review queue decisions as labels (tests/match_labels_reviewed.csv)
 """
 
 import os
@@ -69,6 +71,9 @@ def cmd_scrape():
             db.delete_stale_bundle_children(conn, listing["bazos_id"], child_ids)
         expanded.append(listing)
     listings = expanded
+
+    # 3c. Manual decisions from the review queue win over the matcher
+    db.apply_overrides(listings, db.get_overrides(conn))
 
     # 4. Store listings
     active_ids = set()
@@ -277,6 +282,32 @@ def cmd_eval(labels_path=LABELS_PATH):
         log(f"     got:      {predicted}")
 
 
+REVIEWED_LABELS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests", "match_labels_reviewed.csv")
+
+
+def cmd_export_labels(path=REVIEWED_LABELS_PATH):
+    """Write manual review decisions as a labeled set for `eval`."""
+    import csv
+    db.init_db()
+    conn = db.get_connection()
+    rows = conn.execute("""
+        SELECT a.bazos_id, a.title, a.description, o.status, c.archive_slug
+        FROM match_overrides o
+        JOIN ads a ON a.ad_group_id = o.ad_group_id
+        LEFT JOIN catalog c ON c.id = o.catalog_id
+        ORDER BY o.decided_at
+    """).fetchall()
+    conn.close()
+    expected = {"lot": "LOT", "not_cd": "NONE"}
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["bazos_id", "expected", "note", "title", "description"])
+        for row in rows:
+            label = row["archive_slug"] if row["status"] == "matched" else expected[row["status"]]
+            writer.writerow([row["bazos_id"], label, "review queue", row["title"], row["description"] or ""])
+    log(f"Exported {len(rows)} reviewed listings to {path}")
+
+
 def _print_deals(deals, compact=False):
     for d in deals:
         if compact:
@@ -311,6 +342,7 @@ def main():
         "stats": cmd_stats,
         "list": cmd_list,
         "eval": cmd_eval,
+        "export-labels": cmd_export_labels,
     }
 
     if command in commands:
