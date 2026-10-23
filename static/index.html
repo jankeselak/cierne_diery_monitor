@@ -1121,6 +1121,80 @@
             .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
+        /* ── MATCH REVIEW (admin) ── */
+        .review-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+        }
+        .review-row {
+            display: grid;
+            grid-template-columns: 120px 1fr 260px;
+            gap: 1.25rem;
+            padding: 1rem;
+            background: var(--bg-card);
+        }
+        .review-img {
+            aspect-ratio: 4/3;
+            background: var(--bg);
+            overflow: hidden;
+        }
+        .review-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .review-title {
+            font-weight: 600;
+            margin-bottom: .35rem;
+        }
+        .review-title a { color: var(--text); text-decoration: none; }
+        .review-title a:hover { color: var(--pink); }
+        .review-desc {
+            color: var(--text-dim);
+            font-size: .85rem;
+            line-height: 1.45;
+            margin-bottom: .5rem;
+            white-space: pre-line;
+        }
+        .review-meta {
+            font-family: var(--font-mono);
+            font-size: .7rem;
+            color: var(--text-muted);
+        }
+        .review-guess {
+            font-size: .8rem;
+            color: var(--text-dim);
+            margin-bottom: .6rem;
+        }
+        .review-guess strong { color: var(--text); font-weight: 600; }
+        .review-actions { display: flex; flex-direction: column; gap: .4rem; }
+        .review-actions input {
+            background: var(--bg);
+            border: 1px solid var(--border-light);
+            color: var(--text);
+            font: inherit;
+            font-size: .8rem;
+            padding: .45rem .6rem;
+        }
+        .review-btn {
+            background: none;
+            border: 1px solid var(--border-light);
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: .45rem .6rem;
+            cursor: pointer;
+        }
+        .review-btn:hover { color: var(--text); border-color: var(--text-muted); }
+        .review-btn.confirm { color: var(--green); border-color: var(--green-dim); }
+        .review-btn-row { display: flex; gap: .4rem; }
+        .review-btn-row .review-btn { flex: 1; }
+        @media (max-width: 720px) {
+            .review-row { grid-template-columns: 90px 1fr; }
+            .review-actions { grid-column: 1 / -1; }
+        }
+
         /* ── EMPTY STATE ── */
         .empty-state {
             text-align: center;
@@ -1241,6 +1315,11 @@
                 <div id="portfolio-summary"></div>
                 <div class="portfolio-grid" id="portfolio-grid"></div>
             </div>
+            <!-- Match review view (admins only) -->
+            <div id="review-view" style="display:none;">
+                <datalist id="review-catalog-options"></datalist>
+                <div class="review-list" id="review-list"></div>
+            </div>
         </section>
     </div>
 </div>
@@ -1257,7 +1336,8 @@ let recentListings = [];
 let recentLimit = 20;
 let collectionIds = new Set(); // catalog_ids in collection
 let collectionData = null; // { items, summary } from API
-let activeView = 'catalog'; // 'catalog' or 'collection'
+let activeView = 'catalog'; // 'catalog', 'collection' or 'review'
+let reviewQueue = null; // unmatched / low-confidence ads (admins only)
 
 // ── DATA FETCHING ──
 async function fetchAll() {
@@ -1559,6 +1639,10 @@ function renderSectionNav() {
             <span class="nav-toggle-sep">/</span>
             <button class="nav-toggle-btn ${activeView === 'collection' ? 'active' : ''}"
                     onclick="switchView('collection')">Moja zbierka</button>
+            ${currentUser.is_admin ? `
+            <span class="nav-toggle-sep">/</span>
+            <button class="nav-toggle-btn ${activeView === 'review' ? 'active' : ''}"
+                    onclick="switchView('review')">Kontrola${reviewQueue ? ` (${reviewQueue.length})` : ''}</button>` : ''}
         </div>`;
 }
 
@@ -1573,12 +1657,16 @@ function switchView(view) {
     document.getElementById('catalog-grid').style.display = view === 'catalog' ? '' : 'none';
     document.getElementById('catalog-count').style.display = view === 'catalog' ? '' : 'none';
     portfolioEl.style.display = view === 'collection' ? '' : 'none';
+    document.getElementById('review-view').style.display = view === 'review' ? '' : 'none';
 
     const subtitle = document.getElementById('catalog-subtitle');
 
     if (view === 'collection') {
         subtitle.textContent = '';
         loadAndRenderPortfolio();
+    } else if (view === 'review') {
+        subtitle.textContent = '';
+        loadAndRenderReview();
     } else {
         renderCatalog();
     }
@@ -1691,6 +1779,103 @@ function portfolioCard(item) {
             </div>
         </div>
     </div>`;
+}
+
+// ── MATCH REVIEW (admin) ──
+async function loadAndRenderReview() {
+    const list = document.getElementById('review-list');
+    list.innerHTML = '<div style="padding:3rem;text-align:center;"><span style="font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);letter-spacing:.3em;animation:pulse 1.5s infinite;">LOADING</span></div>';
+    document.getElementById('review-catalog-options').innerHTML =
+        allCatalog.map(c => `<option value="${esc(c.title)}"></option>`).join('');
+    try {
+        const r = await fetch('/api/admin/review', { headers: authHeaders() });
+        const data = await r.json();
+        if (data.error) {
+            list.innerHTML = `<div class="empty-state"><p>${esc(data.error)}</p></div>`;
+            return;
+        }
+        reviewQueue = data;
+        renderReview();
+    } catch (e) {
+        console.error('Review load error:', e);
+        list.innerHTML = '<div class="empty-state"><p>Chyba pri načítaní</p></div>';
+    }
+}
+
+async function loadReviewCount() {
+    if (!currentUser || !currentUser.is_admin) return;
+    try {
+        const r = await fetch('/api/admin/review', { headers: authHeaders() });
+        const data = await r.json();
+        if (!data.error) reviewQueue = data;
+    } catch { /* the tab still works without the count */ }
+}
+
+function renderReview() {
+    renderSectionNav();
+    const list = document.getElementById('review-list');
+    document.getElementById('catalog-subtitle').textContent =
+        reviewQueue.length ? `${reviewQueue.length} na kontrolu` : '';
+    if (!reviewQueue.length) {
+        list.innerHTML = `<div class="empty-state">
+            <h3>Všetko skontrolované</h3>
+            <p>Nové inzeráty bez istého priradenia sa tu objavia po ďalšom scrapovaní.</p>
+        </div>`;
+        return;
+    }
+    list.innerHTML = reviewQueue.map((item, i) => reviewRow(item, i)).join('');
+}
+
+function reviewRow(item, i) {
+    const desc = (item.description || '').slice(0, 400);
+    const tags = [item.is_buying ? 'Dopyt' : '', item.is_trading ? 'Výmena' : '',
+                  item.repost_count > 1 ? `${item.repost_count}× pridaný` : ''].filter(Boolean).join(' · ');
+    return `
+    <div class="review-row" id="review-row-${i}">
+        <div class="review-img">${item.image_url ? `<img src="${esc(item.image_url)}" alt="" loading="lazy">` : ''}</div>
+        <div>
+            <div class="review-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+            <div class="review-desc">${esc(desc)}</div>
+            <div class="review-meta">${esc(item.price_text || '')} · ${esc(item.location || '')} · ${esc(item.date_posted || '')}${tags ? ' · ' + esc(tags) : ''}</div>
+        </div>
+        <div class="review-actions">
+            <div class="review-guess">${item.guess_title
+                ? `Odhad: <strong>${esc(item.guess_title)}</strong>`
+                : 'Bez priradenia'}</div>
+            ${item.catalog_id ? `<button class="review-btn confirm" onclick="decideReview(${i}, 'matched', ${item.catalog_id})">✓ Správne</button>` : ''}
+            <input list="review-catalog-options" placeholder="Priradiť grafiku…"
+                   onchange="assignReview(${i}, this.value)">
+            <div class="review-btn-row">
+                <button class="review-btn" onclick="decideReview(${i}, 'lot')">Viac grafík</button>
+                <button class="review-btn" onclick="decideReview(${i}, 'not_cd')">Nie je ČD</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+function assignReview(i, title) {
+    const item = allCatalog.find(c => c.title === title);
+    if (item) decideReview(i, 'matched', item.id);
+}
+
+async function decideReview(i, status, catalogId = null) {
+    const item = reviewQueue[i];
+    try {
+        const r = await fetch('/api/admin/review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ ad_group_id: item.ad_group_id, status, catalog_id: catalogId }),
+        });
+        const data = await r.json();
+        if (data.error) {
+            document.querySelector(`#review-row-${i} .review-guess`).textContent = data.error;
+            return;
+        }
+        reviewQueue.splice(i, 1);
+        renderReview();
+    } catch (e) {
+        console.error('Review save error:', e);
+    }
 }
 
 // ── DETAIL MODAL ──
@@ -1984,7 +2169,7 @@ async function checkAuth() {
         const r = await fetch('/api/auth/me', { headers: authHeaders() });
         const data = await r.json();
         if (data.authenticated) {
-            currentUser = { email: data.email, token };
+            currentUser = { email: data.email, token, is_admin: !!data.is_admin };
         } else {
             currentUser = null;
             localStorage.removeItem('auth_token');
@@ -2279,8 +2464,8 @@ document.getElementById('catalog-search').addEventListener('input', e => {
         await checkAuth();
         renderAuthBar();
 
-        // Load watchlist + collection if logged in
-        await Promise.all([loadWatchlist(), loadCollection()]);
+        // Load watchlist + collection if logged in (and the review count for admins)
+        await Promise.all([loadWatchlist(), loadCollection(), loadReviewCount()]);
 
         const data = await fetchAll();
         allCatalog = data.catalog;
