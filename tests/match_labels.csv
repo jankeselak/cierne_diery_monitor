@@ -1,5 +1,5 @@
 bazos_id,expected,note,title,description
-190695642,sladovna-pivovaru-stein-matus-matatko,VERIFY: listing says 'Stein v Bratislave — Maťátko'; assumed = Sladovňa pivovaru Stein,Čierne diery - Stein v Bratislave,"Dobrý deň,
+190695642,sladovna-pivovaru-stein-matus-matatko,Stein v Bratislave — Maťátko = Sladovňa pivovaru Stein (confirmed),Čierne diery - Stein v Bratislave,"Dobrý deň,
 predám nerozbalenú grafiku
 Stein v Bratislave — Matúš Maťátko"
 196521493,internat-druzba-adam-sakovy,,Čierne diery - Internát Družba - Adam Šakový,"ciernediery- Internat Druzba, autor Adam Sakovy. Predam grafiku v povodnom obale, stav podla fotiek. Osobny odber Bratislava."
@@ -74,7 +74,7 @@ Osobny odber BA / Stupava."
 190909836,benatsky-pavilon-oto-hudec,,Čierne diery - Benátsky pavilón,"Predám grafiku od ČD Benátsky pavilón. 
 
 Osobný odber v BA/pošlem na dobierku cez Packetu."
-188496237,sladovna-pivovaru-stein-matus-matatko,VERIFY: same as row 'Stein v Bratislave — Maťátko',Vymenim Cierne diery - Stein v Bratislave — Matúš Maťátko,"Dobry den,
+188496237,sladovna-pivovaru-stein-matus-matatko,Stein v Bratislave — Maťátko = Sladovňa pivovaru Stein (confirmed),Vymenim Cierne diery - Stein v Bratislave — Matúš Maťátko,"Dobry den,
 
 Vymenim grafiku Stein v Bratislave — Matúš Maťátko, preferujem hlavne starsie BA grafiky."
 192950844,LOT,trade list,Predám prípadne vymením aj viac ks za 1 grafiky Čierne diery,"Hľadám Manderlák a Observatórium.
@@ -109,7 +109,7 @@ Možnosť osobného odberu v Brne, alebo zaslanie na dobierku zásielkovňou (+5
 193969001,tabakova-tovaren-daniela-olejnikova,,Tabaková továreň - Daniela Olejníková,"Ahojte predám túto krásnu grafiku odciernediery. Nebola vyberaná z obalu je nová, ale je mierne poskodena. Vlavo dole sa mi zvlnila, ked som ju ukladal a trafil roh skrine. Ak je opretá, ako som ju fotil tak to až tak nevidno. Ale je to tam. Upravil som podľa toho aj cenu. PLus postovné, ale ideál ..."
 196104571,stratena-bratislava,,Čierne diery - Stratená Bratislava,"Predám knihu Čiernediery- Stratená Bratislava, v pôvodnom balení, nečítaná, 1 x listovaná.
 Cena: 400 eur"
-195077651,NONE,VERIFY: Bratiska is a different publisher,BRATISKA OD Prior a Hotel Kyjev - ružová,OD Prior a Hotel Kyjev - ružová
+195077651,NONE,Bratiska is a different publisher (confirmed),BRATISKA OD Prior a Hotel Kyjev - ružová,OD Prior a Hotel Kyjev - ružová
 195393327,karlova-ves-kutiky-jozef-glaba,wanted,Cierne diery - Karlova Ves Kutiky,"Hladam grafiku panelakov od Ciernych dier, konkretne Karlovu Ves Kutiky od Jozefa Glabu."
 196653008,remorker-sturec-daniela-olejnikova|remorker-sturec-daniela-olejnikova-2,catalog has this print twice,Čierne diery - Remorkér Šturec,"Predám grafiku Remorker Sturec zo série Stratená Bratislava od autorky Daniely Olejníkovej z roku 2019, vydanú združením Čiernedieryv edícii 200 kusov.
 
@@ -180,7 +180,7 @@ Prosím, kontaktovať cez formulár. Telefónne číslo je vymyslené."
 193525112,LOT,unspecified prints,Výmenim Grafiky - Čierne diery,"Dobrý den, vymením grafiky za ine"
 194650125,MISSING:Baroková sýpka v Holíči — Martin Kačmarek,wanted,čierne diery,Ahojte zhanam Baroková sýpka v Holíči za vymenu
 194833671,NONE,"Poustr / Madebythe, different publisher",Poustr Ihla v Ostrve,Predam Poustr 043 – Ihla v Ostrve - Tina Minor od Madebythe. Prípadne vymením za NEbratislavské Čiernediery.
-195567197,MISSING:Kunsthalle (Stojíme pri kultúre) — Erik Šille,"VERIFY: collab print, not in catalog",Cierne Diery x Stojime pri kulture - Erik Sille - Kunsthalle,"ciernedieryx Stojime pri kulture - Erik Sille - Kunsthalle
+195567197,MISSING:Kunsthalle (Stojíme pri kultúre) — Erik Šille,"ČD collab print, not in catalog (confirmed)",Cierne Diery x Stojime pri kulture - Erik Sille - Kunsthalle,"ciernedieryx Stojime pri kulture - Erik Sille - Kunsthalle
 stav: nove, nerozbalene
 cena 50e
 
@@ -188,11 +188,11 @@ cislo je vymyslene"
 194833668,NONE,"Poustr / Madebythe, different publisher",Poustr Ošarpance,Predám poustr od Madebythe Ošarpance od Andrei Lehorskej. Prípadne vymením za NEbratislavskú grafiku Čiernediery.
 193380876,MISSING:Baroková sýpka v Holíči — Martin Kačmarek,,PREDAM GRAFIKU CIERNE DIERY / BAROKOVA SYPKA - M. KACMAREK,"Dobry den, 
 ponukam na predaj nerozbalenu, neposkodenu grafiku BAROKOVA SYPKA - M. KACMAREK /ciernediery."
-190511620,roh-erohacko-simona-cechova,VERIFY: ROH Trnava = Eroháčko?,Cierne diery - ROH Trnava,Ponúkam na predaj nerozbalenú grafiku.
+190511620,roh-erohacko-simona-cechova,ROH Trnava = Eroháčko (confirmed),Cierne diery - ROH Trnava,Ponúkam na predaj nerozbalenú grafiku.
 195707056,MISSING:Matfyz — Ivana Palečková,,Čierne diery Matfyz,Matfyz čiernedieryAKTUÁLNE
 195395004,AMBIGUOUS,"Marek Cina, print not named",Čierne diery,Predám riso grafiku čiernedieryod Mareka Cinu
 188834869,kastiel-v-jelsave-daniela-olejnikova,only Jelšava print,Čierne diery Jelšava,Predam nerozbalenu grafikuciernedieryJelšava
-191794588,krematorium-a-urnovy-haj,"VERIFY: trade ad, urnový háj is the wanted item",Cierne diery za urnovy haj,Vymenim napr. za urnovy haj
+191794588,krematorium-a-urnovy-haj,"trade ad, urnový háj is the wanted item (confirmed)",Cierne diery za urnovy haj,Vymenim napr. za urnovy haj
 195239151,MISSING:Baroková sýpka v Holíči — Martin Kačmarek,,ČIERNE DIERY Baroková sýpka v Holíči — Martin Kačmarek,"ponúkam Čiernediery: Baroková sýpka v Holíči — Martin Kačmarek
 
 ak máte záujem, napíšte cez formulár, tel. číslo je vymyslené."
@@ -209,7 +209,7 @@ Píštete mail alebo SMS, môžete ma kontaktovať aj cez Whatsapp.
 tel. č./Whatsapp: 0911 272 167
 
 AKTUÁLNE NA PREDAJ: ..."
-195221204,narodna-rada-jozef-tusan,VERIFY: Parlament = Národná rada – Tušan?,Čierne diery PARLAMENT,"Vymením grafiku parlamentu. 
+195221204,narodna-rada-jozef-tusan,Parlament = Národná rada – Tušan (confirmed),Čierne diery PARLAMENT,"Vymením grafiku parlamentu. 
 
 Ponúknite mailom ."
 192966089,NONE,"third-party frames, not the ČD frame",Ramy na grafiky CD,"Prade 3 ramy na grafikyciernedierykupene v artattack shope. Vsetky ramy su rovnake, bez poskodenia, cierna farba s ostrymi hranami.
@@ -224,7 +224,7 @@ Kontaktujte ma cez formular. Telefonne cislo je vymyslene."
 autor: Adela Ražná
 názov: Na prechádzke dolinou 
 Prípadne vymaním za čiernedieryLimitácia 100 ks"
-195220484,MISSING:Devín,"VERIFY: new print, not in catalog",Predám čierne diery - Devín - nová grafika,Predám úplne novú grafiku čiernych dier Devín. Rozhodol som sa pre inú.
+195220484,MISSING:Devín,"ČD print, not in catalog (confirmed)",Predám čierne diery - Devín - nová grafika,Predám úplne novú grafiku čiernych dier Devín. Rozhodol som sa pre inú.
 195708194,MISSING:Mladá garda — Kimi Salamanová,,Predam - cierne diery (Mlada garda),Predam originalciernediery- Mlada garda alebo vymenim za ine dielo.
 196498476,LOT,unspecified prints,Cierne diery,"Predam grafiky, ceny od 45€, v pripade odbery viacerych zlava"
 187699164,LOT,,Vymením (viac ks za 1) prípadne predám grafiky Čierne diery.,"Vymením (viac ks za 1) prípadne predám grafiky Čiernediery.
