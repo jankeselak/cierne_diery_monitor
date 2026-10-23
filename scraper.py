@@ -1,3 +1,5 @@
+import json
+import os
 import re
 import time
 import requests
@@ -26,6 +28,7 @@ def is_trade_intent(title, description=""):
 
 BASE_URL = "https://ostatne.bazos.sk"
 ARCHIVE_URL = "https://eshop.ciernediery.sk/archive/"
+CATALOG_ADDITIONS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog_additions.json")
 SEARCH_PATH = "/inzeraty/cierne-diery/"
 ITEMS_PER_PAGE = 20
 
@@ -166,30 +169,24 @@ def scrape_bazos(max_pages=None, on_progress=None):
 def parse_archive_page(html):
     """Parse the eshop archive page. Returns list of catalog item dicts."""
     items = []
+    soup = BeautifulSoup(html, "html.parser")
 
-    # Pattern: <li class="..."> <a href="url"> <img src="img"> ... <h2>Title</h2> <p>Location</p>
-    pattern = re.compile(
-        r'<li\s+class="([^"]*?)">\s*'
-        r'(?:<[^>]*>)*?'
-        r'<a\s+href="([^"]*?)"'
-        r'.*?'
-        r'<img[^>]*?src="([^"]*?)"'
-        r'.*?'
-        r'<h2>(.*?)</h2>\s*'
-        r'<p>(.*?)(?:<span>|</p>)',
-        re.DOTALL
-    )
-
-    for match in pattern.finditer(html):
-        li_class = match.group(1).strip()
-        url = match.group(2).strip()
-        image_url = match.group(3).strip()
-        title = match.group(4).strip()
-        location = match.group(5).strip()
-
-        # Skip non-portfolio items (menu items, etc.)
-        if "menu-item" in li_class:
+    # Each print is an <li> in the portfolio grid; items without a location have no class
+    for li in soup.select("ul.nm-portfolio-grid > li"):
+        link = li.find("a", href=True)
+        heading = li.find("h2")
+        if not link or not heading:
             continue
+        img = li.find("img", src=True)
+        location_p = heading.find_next_sibling("p")
+
+        li_class = " ".join(li.get("class", []))
+        url = link["href"].strip()
+        image_url = img["src"].strip() if img else None
+        title = heading.get_text(strip=True).replace("\xa0", " ")
+        # Location is the text before the "<span>, </span>" separator
+        location = location_p.find(string=True, recursive=False) if location_p else None
+        location = location.strip() if location else ""
 
         # Extract slug from URL (items with url="#" have no detail page)
         slug_match = re.search(r"/archive/([^/]+)/?$", url)
@@ -262,4 +259,19 @@ def scrape_archive(on_progress=None):
     items = parse_archive_page(html)
     if on_progress:
         on_progress(f"Found {len(items)} items in archive")
-    return items
+    return items + load_catalog_additions({item["archive_slug"] for item in items})
+
+
+def load_catalog_additions(archive_slugs):
+    """Load manually added prints that are traded but not (yet) on the archive page.
+
+    Slugs follow the eshop's building-artist pattern, so once a print gets
+    archived under the same slug the archive version takes over.
+    """
+    with open(CATALOG_ADDITIONS_PATH, encoding="utf-8") as f:
+        additions = json.load(f)
+    return [
+        {"location": "", "archive_url": "", "image_url": None, "category": "Grafika", **item}
+        for item in additions
+        if item["archive_slug"] not in archive_slugs
+    ]
