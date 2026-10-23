@@ -53,6 +53,17 @@ def is_bundle(title, description):
     return len(item_lines) >= 2
 
 
+def bundle_items(listing):
+    """Return parsed items if the listing sells multiple prints, else []."""
+    if listing.get("is_buying"):
+        return []
+    description = listing.get("description") or ""
+    if not is_bundle(listing["title"], description):
+        return []
+    items = parse_items(description)
+    return items if len(items) >= 2 else []
+
+
 def parse_items(description):
     """Parse individual items from a bundle description.
 

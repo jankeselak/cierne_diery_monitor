@@ -3,7 +3,7 @@
 
 import json
 import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from statistics import median as calc_median
 from urllib.parse import urlparse, parse_qs
@@ -508,7 +508,7 @@ def main():
     db.init_db()
     STATIC_DIR.mkdir(exist_ok=True)
     port = int(sys.argv[1]) if len(sys.argv) > 1 else PORT
-    server = HTTPServer(("", port), Handler)
+    server = ThreadingHTTPServer(("", port), Handler)
     print(f"ČIERNE DIERY MONITOR → http://localhost:{port}")
     try:
         server.serve_forever()
