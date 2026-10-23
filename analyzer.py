@@ -32,7 +32,7 @@ def find_deals(conn):
     # Get all active listings with prices
     active = conn.execute("""
         SELECT l.*, c.title as catalog_title, c.building, c.artist, c.category
-        FROM listings l
+        FROM ads l
         LEFT JOIN catalog c ON l.catalog_id = c.id
         WHERE l.is_active = 1 AND l.price IS NOT NULL
               AND (l.is_bundle = 0 OR l.is_bundle IS NULL)
@@ -50,7 +50,7 @@ def find_deals(conn):
     catalog_prices = {}
     rows = conn.execute("""
         SELECT l.catalog_id, l.price, l.title, l.description
-        FROM listings l
+        FROM ads l
         WHERE l.catalog_id IS NOT NULL AND l.price IS NOT NULL
               AND (l.is_bundle = 0 OR l.is_bundle IS NULL)
     """).fetchall()
@@ -127,26 +127,26 @@ def get_stats_summary(conn):
     row = conn.execute("SELECT COUNT(*) as n FROM catalog").fetchone()
     stats["catalog_count"] = row["n"]
 
-    row = conn.execute("SELECT COUNT(*) as n FROM listings").fetchone()
+    row = conn.execute("SELECT COUNT(*) as n FROM ads").fetchone()
     stats["total_listings"] = row["n"]
 
-    row = conn.execute("SELECT COUNT(*) as n FROM listings WHERE is_active = 1").fetchone()
+    row = conn.execute("SELECT COUNT(*) as n FROM ads WHERE is_active = 1").fetchone()
     stats["active_listings"] = row["n"]
 
-    row = conn.execute("SELECT COUNT(*) as n FROM listings WHERE catalog_id IS NOT NULL").fetchone()
+    row = conn.execute("SELECT COUNT(*) as n FROM ads WHERE catalog_id IS NOT NULL").fetchone()
     stats["matched_listings"] = row["n"]
 
     row = conn.execute("""
         SELECT MIN(price) as min_p, MAX(price) as max_p, AVG(price) as avg_p
-        FROM listings WHERE price IS NOT NULL AND is_active = 1
+        FROM ads WHERE price IS NOT NULL AND is_active = 1
     """).fetchone()
     stats["min_price"] = row["min_p"]
     stats["max_price"] = row["max_p"]
     stats["avg_price"] = row["avg_p"]
 
     row = conn.execute("""
-        SELECT COUNT(*) as n FROM listings
-        WHERE first_seen >= datetime('now', '-7 days')
+        SELECT COUNT(*) as n FROM ads
+        WHERE group_first_seen >= datetime('now', '-7 days')
     """).fetchone()
     stats["new_this_week"] = row["n"]
 

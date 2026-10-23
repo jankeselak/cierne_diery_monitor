@@ -138,7 +138,7 @@ class Handler(SimpleHTTPRequestHandler):
         conn = db.get_connection()
         catalog = conn.execute("""
             SELECT c.*,
-                (SELECT COUNT(*) FROM listings l
+                (SELECT COUNT(*) FROM ads l
                  WHERE l.catalog_id = c.id AND l.is_active = 1 AND l.is_buying = 0
                        AND (l.is_bundle = 0 OR l.is_bundle IS NULL)) as active_count
             FROM catalog c
@@ -152,7 +152,7 @@ class Handler(SimpleHTTPRequestHandler):
                 ads = conn.execute("""
                     SELECT bazos_id, title, price, price_text, date_posted,
                            location, url, views
-                    FROM listings
+                    FROM ads
                     WHERE catalog_id = ? AND is_active = 1 AND is_buying = 0
                           AND (is_bundle = 0 OR is_bundle IS NULL)
                     ORDER BY price ASC
@@ -178,8 +178,9 @@ class Handler(SimpleHTTPRequestHandler):
         # All listings for this item (active + inactive), newest first
         all_listings = conn.execute("""
             SELECT bazos_id, title, price, price_text, date_posted,
-                   location, url, views, is_active, is_buying, is_trading, first_seen, last_seen
-            FROM listings
+                   location, url, views, is_active, is_buying, is_trading, first_seen, last_seen,
+                   group_first_seen, repost_count
+            FROM ads
             WHERE catalog_id = ?
             ORDER BY date_posted DESC
         """, (item_id,)).fetchall()
@@ -210,10 +211,10 @@ class Handler(SimpleHTTPRequestHandler):
                    l.catalog_id, l.is_active, l.is_buying, l.is_trading,
                    c.title as catalog_title, c.building, c.artist,
                    c.image_url as catalog_image, c.archive_slug, c.category
-            FROM listings l
+            FROM ads l
             LEFT JOIN catalog c ON l.catalog_id = c.id
             WHERE (l.is_bundle = 0 OR l.is_bundle IS NULL)
-            ORDER BY l.first_seen DESC
+            ORDER BY l.group_first_seen DESC
             LIMIT ?
         """, (limit,)).fetchall()
         conn.close()
@@ -369,7 +370,7 @@ class Handler(SimpleHTTPRequestHandler):
             d = _add_thumb_url(dict(row))
             # Current value = median of active sell listings (exclude buy+trade)
             active_prices = conn.execute("""
-                SELECT price FROM listings
+                SELECT price FROM ads
                 WHERE catalog_id = ? AND is_active = 1
                       AND is_buying = 0 AND (is_bundle = 0 OR is_bundle IS NULL)
                       AND price IS NOT NULL
@@ -381,7 +382,7 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 # Fallback: last known listing price
                 last = conn.execute("""
-                    SELECT price FROM listings
+                    SELECT price FROM ads
                     WHERE catalog_id = ? AND price IS NOT NULL
                           AND is_buying = 0 AND (is_bundle = 0 OR is_bundle IS NULL)
                     ORDER BY last_seen DESC LIMIT 1
