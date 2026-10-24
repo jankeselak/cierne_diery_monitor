@@ -11,6 +11,7 @@ Usage:
                                 Write review queue decisions as labels (tests/match_labels_reviewed.csv)
 """
 
+import fcntl
 import os
 import sys
 import db
@@ -27,7 +28,22 @@ def log(msg):
     print(msg)
 
 
+SCRAPE_LOCK_PATH = db.DB_DIR / "scrape.lock"
+
+
 def cmd_scrape():
+    """Scrape both archive and bazos, unless another scrape is still running."""
+    db.DB_DIR.mkdir(exist_ok=True)
+    with open(SCRAPE_LOCK_PATH, "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            log("Another scrape is still running, skipping this one")
+            return
+        _scrape()
+
+
+def _scrape():
     """Scrape both archive and bazos, match listings to catalog."""
     from datetime import datetime
     db.init_db()
@@ -44,6 +60,9 @@ def cmd_scrape():
 
     # 2. Scrape bazos listings
     listings = scraper.scrape_bazos()
+
+    # 2b. Full text for ads whose search preview is cut off
+    fetched, failed = scraper.fill_full_descriptions(listings, db.get_full_descriptions(conn))
 
     # 3. Match listings to catalog
     catalog_rows = db.get_catalog(conn)
@@ -91,6 +110,9 @@ def cmd_scrape():
             group = reposts.ad_group_id(listing)
             if group in known_groups:
                 repost_count += 1
+            elif listing.get("parent_bazos_id") and group.rsplit("_", 1)[0] in known_groups:
+                # Another item found in a known bundle (edited ad or longer text): not a new ad
+                pass
             else:
                 new_count += 1
                 new_listings.append(listing)
@@ -107,7 +129,7 @@ def cmd_scrape():
 
     matched = sum(1 for l in listings if l.get("catalog_id"))
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    log(f"[{now}] {len(listings)} listings ({new_count} new, {repost_count} reposts, {matched} matched, {bundle_count} bundles), {len(archive_items)} catalog items")
+    log(f"[{now}] {len(listings)} listings ({new_count} new, {repost_count} reposts, {matched} matched, {bundle_count} bundles, {fetched} full texts fetched, {failed} failed), {len(archive_items)} catalog items")
 
     conn.close()
 

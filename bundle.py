@@ -7,6 +7,7 @@ virtual child listings for each identified item.
 
 import re
 import matcher
+import reposts
 
 
 # Title patterns that suggest multiple items
@@ -98,6 +99,7 @@ def make_child(parent_listing, parsed_item, index, catalog_items):
         "bazos_id": f"{parent_listing['bazos_id']}_{index}",
         "title": parent_listing["title"],
         "description": parent_listing["description"],
+        "preview": reposts.preview(parent_listing),
         "price": parsed_item["price"],
         "price_text": f"{parsed_item['price']:.0f} €" if parsed_item["price"] else "Dohodou",
         "date_posted": parent_listing.get("date_posted"),
