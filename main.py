@@ -59,6 +59,9 @@ def _scrape():
     # 2. Scrape bazos listings
     listings = scraper.scrape_bazos()
 
+    # 2b. Full text for ads whose search preview is cut off
+    fetched, failed = scraper.fill_full_descriptions(listings, db.get_full_descriptions(conn))
+
     # 3. Match listings to catalog
     catalog_rows = db.get_catalog(conn)
     catalog_dicts = [dict(row) for row in catalog_rows]
@@ -102,6 +105,9 @@ def _scrape():
             group = reposts.ad_group_id(listing)
             if group in known_groups:
                 repost_count += 1
+            elif listing.get("parent_bazos_id") and group.rsplit("_", 1)[0] in known_groups:
+                # Another item found in a known bundle (edited ad or longer text): not a new ad
+                pass
             else:
                 new_count += 1
                 new_listings.append(listing)
@@ -118,7 +124,7 @@ def _scrape():
 
     matched = sum(1 for l in listings if l.get("catalog_id"))
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    log(f"[{now}] {len(listings)} listings ({new_count} new, {repost_count} reposts, {matched} matched, {bundle_count} bundles), {len(archive_items)} catalog items")
+    log(f"[{now}] {len(listings)} listings ({new_count} new, {repost_count} reposts, {matched} matched, {bundle_count} bundles, {fetched} full texts fetched, {failed} failed), {len(archive_items)} catalog items")
 
     conn.close()
 

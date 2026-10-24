@@ -150,6 +150,9 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_parent ON listings(parent_bazos_id)")
     # Migrate: group reposts of the same ad. Recomputed for all rows (cheap) so
     # changes to the grouping rule apply to existing data too.
+    if "preview" not in listing_cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN preview TEXT")
+        conn.execute("UPDATE listings SET preview = description")
     if "ad_group_id" not in listing_cols:
         conn.execute("ALTER TABLE listings ADD COLUMN ad_group_id TEXT")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_group ON listings(ad_group_id)")
@@ -216,20 +219,22 @@ def upsert_listing(conn, listing):
     is_bundle = listing.get("is_bundle", 0)
     parent_bazos_id = listing.get("parent_bazos_id")
     ad_group_id = reposts.ad_group_id(listing)
+    preview = reposts.preview(listing)
 
     if existing:
         conn.execute("""
             UPDATE listings SET title=?, price=?, price_text=?, description=?,
                 date_posted=?, location=?, postal_code=?, url=?, image_url=?,
                 views=?, catalog_id=?, last_seen=datetime('now'), is_active=1,
-                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?, ad_group_id=?
+                is_buying=?, is_trading=?, is_bundle=?, parent_bazos_id=?, ad_group_id=?,
+                preview=?
             WHERE bazos_id=?
         """, (
             listing["title"], listing["price"], listing["price_text"],
             listing["description"], listing["date_posted"], listing["location"],
             listing["postal_code"], listing["url"], listing["image_url"],
             listing["views"], listing["catalog_id"], is_buying, is_trading,
-            is_bundle, parent_bazos_id, ad_group_id,
+            is_bundle, parent_bazos_id, ad_group_id, preview,
             listing["bazos_id"]
         ))
         return existing["id"]
@@ -237,16 +242,24 @@ def upsert_listing(conn, listing):
         cur = conn.execute("""
             INSERT INTO listings (bazos_id, title, price, price_text, description,
                 date_posted, location, postal_code, url, image_url, views, catalog_id,
-                is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id, preview)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing["bazos_id"], listing["title"], listing["price"],
             listing["price_text"], listing["description"], listing["date_posted"],
             listing["location"], listing["postal_code"], listing["url"],
             listing["image_url"], listing["views"], listing["catalog_id"],
-            is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id
+            is_buying, is_trading, is_bundle, parent_bazos_id, ad_group_id, preview
         ))
         return cur.lastrowid
+
+
+def get_full_descriptions(conn):
+    """Full descriptions fetched earlier, keyed by the search preview they replaced."""
+    return dict(conn.execute(
+        "SELECT preview, description FROM listings "
+        "WHERE parent_bazos_id IS NULL AND description != preview"
+    ).fetchall())
 
 
 def delete_stale_bundle_children(conn, parent_bazos_id, current_child_ids):
