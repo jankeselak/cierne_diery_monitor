@@ -6,7 +6,7 @@ Usage:
     python main.py deals        Show current deals (best value listings)
     python main.py stats        Show price statistics per print
     python main.py list         List all active listings
-    python main.py eval         Measure matching accuracy against tests/match_labels.csv
+    python main.py eval [file]  Measure matching accuracy against tests/match_labels.csv (or file)
 """
 
 import fcntl
@@ -243,8 +243,8 @@ def predict_label(listing, catalog_items, slug_by_id):
     return slug_by_id[cat_id] if cat_id else "NONE"
 
 
-def cmd_eval():
-    """Measure matching accuracy against the hand-labeled listings."""
+def cmd_eval(labels_path=LABELS_PATH):
+    """Measure matching accuracy against hand-labeled listings."""
     import csv
     db.init_db()
     conn = db.get_connection()
@@ -252,7 +252,7 @@ def cmd_eval():
     conn.close()
     slug_by_id = {item["id"]: item["archive_slug"] for item in catalog_items}
 
-    with open(LABELS_PATH, newline="") as f:
+    with open(labels_path, newline="") as f:
         rows = list(csv.DictReader(f))
 
     matched = correct = expected_slug = 0
@@ -336,7 +336,7 @@ def main():
     }
 
     if command in commands:
-        commands[command]()
+        commands[command](*sys.argv[2:])
     else:
         print(f"Unknown command: {command}")
         print(__doc__)
