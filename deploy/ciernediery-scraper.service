@@ -8,4 +8,6 @@ WorkingDirectory=/opt/ciernediery
 ExecStart=/opt/ciernediery/venv/bin/python main.py scrape
 EnvironmentFile=-/opt/ciernediery/.env
 Environment=PYTHONUNBUFFERED=1
+StandardOutput=append:/opt/ciernediery/data/scrape.log
+StandardError=append:/opt/ciernediery/data/scrape.log
 TimeoutStartSec=300
