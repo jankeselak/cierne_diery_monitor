@@ -19,11 +19,19 @@ def _normalize(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def preview(listing):
+    """The search-page preview of the description (older rows only have the description)."""
+    if listing.get("preview") is not None:
+        return listing["preview"]
+    return listing.get("description")
+
+
 def ad_group_id(listing):
     """Return a stable group id for a listing; bundle children get one per item."""
     key = "|".join([
         _normalize(listing["title"]),
-        _normalize(listing.get("description")),
+        # The preview, not the full text fetched for long ads, so old groups stay
+        _normalize(preview(listing)),
         (listing.get("postal_code") or "").replace(" ", ""),
     ])
     group = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]

@@ -39,6 +39,10 @@ HEADERS = {
 
 # Delay between requests to be polite
 REQUEST_DELAY = 1.5
+# Ad detail pages fetched per scrape at most; a backlog is worked off over several runs
+MAX_DETAIL_FETCHES = 30
+# The search page cuts descriptions longer than ~300 characters with this
+TRUNCATION_MARK = "..."
 
 
 def fetch_page(url):
@@ -79,6 +83,8 @@ def parse_bazos_page(html):
         # Description
         desc_div = item.select_one("div.popis")
         listing["description"] = desc_div.get_text(strip=True) if desc_div else ""
+        # Reposts are grouped by the preview, so it is kept even after the full text is fetched
+        listing["preview"] = listing["description"]
 
         # Price
         price_el = item.select_one("div.inzeratycena span[translate='no']")
@@ -125,6 +131,51 @@ def parse_bazos_page(html):
         listings.append(listing)
 
     return listings
+
+
+def parse_ad_description(html):
+    """Full description from an ad detail page, with line breaks; None if missing."""
+    div = BeautifulSoup(html, "html.parser").select_one("div.popisdetail")
+    if not div:
+        return None
+    # Newlines in the HTML source are just whitespace; <br> are the real line breaks
+    for text in div.find_all(string=True):
+        text.replace_with(text.replace("\n", " "))
+    for br in div.find_all("br"):
+        br.replace_with("\n")
+    return "\n".join(line.strip() for line in div.get_text().split("\n")).strip() or None
+
+
+def fill_full_descriptions(listings, known):
+    """Replace cut-off previews with the ad's full description.
+
+    known maps previews to full descriptions stored earlier, so unchanged ads
+    and their reposts are never fetched again. Returns (fetched, failed); on a
+    failed fetch the preview stays and the ad is tried again next run.
+    """
+    fetched = failed = 0
+    for listing in listings:
+        preview = listing["preview"]
+        if not preview.rstrip().endswith(TRUNCATION_MARK):
+            continue
+        full = known.get(preview)
+        if not full:
+            if fetched + failed >= MAX_DETAIL_FETCHES:
+                continue
+            time.sleep(REQUEST_DELAY)
+            try:
+                full = parse_ad_description(fetch_page(listing["url"]))
+            except requests.RequestException:
+                full = None
+            if full:
+                fetched += 1
+            else:
+                failed += 1
+                continue
+        listing["description"] = full
+        listing["is_buying"] = 1 if is_buy_intent(listing["title"], full) else 0
+        listing["is_trading"] = 1 if is_trade_intent(listing["title"], full) else 0
+    return fetched, failed
 
 
 def get_total_count(html):
