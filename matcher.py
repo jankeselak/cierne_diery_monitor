@@ -306,6 +306,7 @@ def match_all_listings(listings, catalog_items, on_progress=None):
         cat_id, confidence = match_listing_to_catalog(
             listing["title"], listing.get("description", ""), catalog_items
         )
+        listing["match_confidence"] = confidence
         if cat_id:
             listing["catalog_id"] = cat_id
             matched += 1

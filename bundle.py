@@ -121,6 +121,7 @@ def make_child(parent_listing, parsed_item, index, catalog_items):
     context = f"{name} {artist_ctx}".strip()
     cat_id, confidence = matcher.match_listing_to_catalog(name, context, catalog_items)
     child["catalog_id"] = cat_id
+    child["match_confidence"] = confidence
 
     return child
 
