@@ -9,6 +9,7 @@ Usage:
     python main.py eval         Measure matching accuracy against tests/match_labels.csv
 """
 
+import fcntl
 import os
 import sys
 import db
@@ -25,7 +26,22 @@ def log(msg):
     print(msg)
 
 
+SCRAPE_LOCK_PATH = db.DB_DIR / "scrape.lock"
+
+
 def cmd_scrape():
+    """Scrape both archive and bazos, unless another scrape is still running."""
+    db.DB_DIR.mkdir(exist_ok=True)
+    with open(SCRAPE_LOCK_PATH, "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            log("Another scrape is still running, skipping this one")
+            return
+        _scrape()
+
+
+def _scrape():
     """Scrape both archive and bazos, match listings to catalog."""
     from datetime import datetime
     db.init_db()
